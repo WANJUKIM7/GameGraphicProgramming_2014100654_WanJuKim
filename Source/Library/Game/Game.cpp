@@ -30,10 +30,17 @@ namespace library
 				Status code
 	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
-	HRESULT Game::Initialize(HINSTANCE hInstance, INT nCmdShow)
+	HRESULT Game::Initialize(_In_ HINSTANCE hInstance, _In_ INT nCmdShow)
 	{
-		m_mainWindow.get()->Initialize(hInstance, nCmdShow, m_pszGameName);
-		return m_renderer.get()->Initialize(m_mainWindow.get()->GetWindow());
+		HRESULT hr = m_mainWindow.get()->Initialize(hInstance, nCmdShow, m_pszGameName);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		hr = m_renderer.get()->Initialize(m_mainWindow.get()->GetWindow());
+		if (FAILED(hr))
+			return E_FAIL;
+
+		return S_OK;
 	}
 
 	/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M

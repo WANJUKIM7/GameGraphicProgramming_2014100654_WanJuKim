@@ -68,8 +68,15 @@
 copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Debug"</Command>
     </PostBuildEvent>
     <Lib>
-      <AdditionalDependencies>d3d11.lib;</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib</AdditionalDependencies>
     </Lib>
+    <FxCompile>
+      <ShaderType>Effect</ShaderType>
+    </FxCompile>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -93,8 +100,15 @@ copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Debug"</Command>
 copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Release"</Command>
     </PostBuildEvent>
     <Lib>
-      <AdditionalDependencies>d3d11.lib;</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib</AdditionalDependencies>
     </Lib>
+    <FxCompile>
+      <ShaderType>Effect</ShaderType>
+    </FxCompile>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Game\Game.cpp" />
@@ -115,6 +129,23 @@ copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Release"</Command>
   </ItemGroup>
   <ItemGroup>
     <Image Include="directx.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Lab03_PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PS</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shaders\Lab03_VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VS</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VS</EntryPointName>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Lab03.fxh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -10,11 +10,12 @@ namespace library
                   m_swapChain1, m_renderTargetView].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
-    //TIP : 이니셜라이저랑 할당은 매우 다르다. 초기화를 해줘야 한다. 14:31
+    //TIP : 이니셜라이저랑 할당은 매우 다르다. 초기화를 해줘야 처음부터 '유효한 개체'라고 할 수 있다. 무조건 필요하다 그런 건가?
     Renderer::Renderer()
         : m_driverType(D3D_DRIVER_TYPE_NULL), m_featureLevel(D3D_FEATURE_LEVEL_11_0), m_d3dDevice(nullptr),
         m_d3dDevice1(nullptr), m_immediateContext(nullptr), m_immediateContext1(nullptr),
-        m_swapChain(nullptr), m_swapChain1(nullptr), m_renderTargetView(nullptr)
+        m_swapChain(nullptr), m_swapChain1(nullptr), m_renderTargetView(nullptr),
+        m_vertexShader(nullptr), m_pixelShader(nullptr), m_vertexLayout(nullptr), m_vertexBuffer(nullptr)
     {
     }
 
@@ -171,7 +172,113 @@ namespace library
         vp.TopLeftY = 0;
         m_immediateContext->RSSetViewports(1, &vp);
 
-        return S_OK;
+        //Create VertexBuffer
+        {
+            D3D11_BUFFER_DESC bd;
+            ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+            bd.Usage = D3D11_USAGE_DEFAULT;
+            bd.ByteWidth = sizeof(SimpleVertex) * 3;
+            bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+            bd.CPUAccessFlags = 0;
+            bd.MiscFlags = 0;
+
+            SimpleVertex vertices[] =
+            {
+                XMFLOAT3(0.0f, 0.5f, 0.5f),
+                XMFLOAT3(0.5f, -0.5f, 0.5f),
+                XMFLOAT3(-0.5f, -0.5f, 0.5f),
+            };
+
+            D3D11_SUBRESOURCE_DATA initData;
+            ZeroMemory(&initData, sizeof(D3D11_SUBRESOURCE_DATA));
+            initData.pSysMem = vertices;
+            initData.SysMemPitch = 0;
+            initData.SysMemSlicePitch = 0;
+            hr = m_d3dDevice->CreateBuffer(&bd, &initData, m_vertexBuffer.GetAddressOf());
+
+            if (FAILED(hr)) 
+                return hr;
+        }
+
+        //Create IndexBuffer
+        /*{
+            WORD indices[] =
+            {
+                0, 1, 2
+            };
+
+            D3D11_BUFFER_DESC bd;
+            ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+            bd.Usage = D3D11_USAGE_DEFAULT;
+            bd.ByteWidth = sizeof(WORD) * 3;
+            bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+            bd.CPUAccessFlags = 0;
+            bd.MiscFlags = 0;
+
+            D3D11_SUBRESOURCE_DATA initData;
+            ZeroMemory(&initData, sizeof(D3D11_SUBRESOURCE_DATA));
+            initData.pSysMem = indices;
+            initData.SysMemPitch = 0;
+            initData.SysMemSlicePitch = 0;
+            hr = m_d3dDevice->CreateBuffer(&bd, &initData, m_indexBuffer.GetAddressOf());
+
+            if (FAILED(hr))
+                return hr;
+        }*/
+
+        //Create InputLayout
+        {
+            ID3DBlob* pVSBlob = nullptr;
+            hr = compileShaderFromFile(
+                L"../Shaders/Lab03.fxh",
+                "VS",
+                "vs_5_0",
+                &pVSBlob
+            );
+            /*ID3DBlob* pErrorBlob = nullptr;
+            ID3DBlob** ppBlobOut = nullptr;
+            hr = D3DCompileFromFile(
+                L"../Shaders/Lab03.fxh",
+                nullptr,
+                nullptr,
+                "VS",
+                "vs_5_0",
+                D3DCOMPILE_ENABLE_STRICTNESS,
+                0,
+                ppBlobOut,
+                &pErrorBlob);*/
+
+            if (FAILED(hr))
+                return hr;
+            ID3DBlob* pPSBlob = nullptr;
+            hr = compileShaderFromFile(
+                L"../Shaders/Lab03.fxh",
+                "PS",
+                "ps_5_0",
+                &pPSBlob
+            );
+            if (FAILED(hr))
+                return hr;
+
+            D3D11_INPUT_ELEMENT_DESC layouts[] =
+            {
+                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0}
+            };
+            UINT uNumElements = ARRAYSIZE(layouts);
+
+            hr = m_d3dDevice->CreateInputLayout(
+                layouts,
+                uNumElements,
+                pVSBlob->GetBufferPointer(),
+                pVSBlob->GetBufferSize(),
+                &m_vertexLayout);
+
+            if (FAILED(hr)) 
+                return hr;
+
+            pVSBlob->Release();
+            pPSBlob->Release();
+        }
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -181,6 +288,17 @@ namespace library
 
     void Renderer::Render()
     {
+        UINT stride = sizeof(SimpleVertex);
+        UINT offset = 0;
+        m_immediateContext->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
+        m_immediateContext->IASetInputLayout(m_vertexLayout.Get());
+        m_immediateContext->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        
+        m_immediateContext->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+        m_immediateContext->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+        m_immediateContext->Draw(3, 0);
+
         m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_swapChain->Present(0, 0);
     }
@@ -208,7 +326,7 @@ namespace library
                   Status code
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     
-    HRESULT Renderer::compileShaderFromFile(PCWSTR pszFileName, PCSTR pszEntryPoint, PCSTR szShaderModel, ID3DBlob** ppBlobOut)
+    HRESULT Renderer::compileShaderFromFile(_In_ PCWSTR pszFileName, _In_ PCSTR pszEntryPoint, _In_ PCSTR szShaderModel, _Outptr_ ID3DBlob** ppBlobOut)
     {
         return E_NOTIMPL;
     }

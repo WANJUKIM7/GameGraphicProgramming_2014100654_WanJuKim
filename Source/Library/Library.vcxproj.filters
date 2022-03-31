@@ -67,4 +67,11 @@
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Lab03_VS.hlsl" />
+    <FxCompile Include="Shaders\Lab03_PS.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Lab03.fxh" />
+  </ItemGroup>
 </Project>
