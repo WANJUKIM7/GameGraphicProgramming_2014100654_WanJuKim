@@ -66,12 +66,12 @@ namespace library
         {
             m_driverType = driverTypes[driverTypeIndex];
             hr = D3D11CreateDevice(nullptr, m_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
-                D3D11_SDK_VERSION, &m_d3dDevice, &m_featureLevel, &m_immediateContext);
+                D3D11_SDK_VERSION, m_d3dDevice.GetAddressOf(), &m_featureLevel, m_immediateContext.GetAddressOf());
 
             if (hr == E_INVALIDARG)
             {
                 hr = D3D11CreateDevice(nullptr, m_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
-                    D3D11_SDK_VERSION, &m_d3dDevice, &m_featureLevel, &m_immediateContext);
+                    D3D11_SDK_VERSION, m_d3dDevice.GetAddressOf(), &m_featureLevel, m_immediateContext.GetAddressOf());
             }
 
             if (SUCCEEDED(hr))
@@ -141,7 +141,7 @@ namespace library
             sd.SampleDesc.Quality = 0;
             sd.Windowed = TRUE;
 
-            hr = factory->CreateSwapChain(m_d3dDevice.Get(), &sd, &m_swapChain);
+            hr = factory->CreateSwapChain(m_d3dDevice.Get(), &sd, m_swapChain.GetAddressOf());
         }
 
         factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER);
@@ -226,58 +226,62 @@ namespace library
                 return hr;
         }*/
 
-        //Create InputLayout
+        //Create Shader
         {
-            ID3DBlob* pVSBlob = nullptr;
+            ComPtr<ID3DBlob> pVSBlob = nullptr;
+            //QUESTION : 경로 왜 못 찾지? ../Library 이거 왜 해야 함?
             hr = compileShaderFromFile(
-                L"../Shaders/Lab03.fxh",
+                L"../Library/Shaders/Lab03.fxh",
                 "VS",
                 "vs_5_0",
-                &pVSBlob
+                pVSBlob.GetAddressOf()
             );
-            /*ID3DBlob* pErrorBlob = nullptr;
-            ID3DBlob** ppBlobOut = nullptr;
-            hr = D3DCompileFromFile(
-                L"../Shaders/Lab03.fxh",
-                nullptr,
-                nullptr,
-                "VS",
-                "vs_5_0",
-                D3DCOMPILE_ENABLE_STRICTNESS,
-                0,
-                ppBlobOut,
-                &pErrorBlob);*/
-
             if (FAILED(hr))
                 return hr;
-            ID3DBlob* pPSBlob = nullptr;
+
+            hr = m_d3dDevice->CreateVertexShader(
+                pVSBlob->GetBufferPointer(),
+                pVSBlob->GetBufferSize(),
+                nullptr,
+                m_vertexShader.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+
+            ComPtr<ID3DBlob> pPSBlob = nullptr;
             hr = compileShaderFromFile(
-                L"../Shaders/Lab03.fxh",
+                L"../Library/Shaders/Lab03.fxh",
                 "PS",
                 "ps_5_0",
-                &pPSBlob
+                pPSBlob.GetAddressOf()
             );
             if (FAILED(hr))
                 return hr;
 
+            hr = m_d3dDevice->CreatePixelShader(
+                pPSBlob->GetBufferPointer(),
+                pPSBlob->GetBufferSize(),
+                nullptr,
+                m_pixelShader.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+
+            //Create InputLayout
             D3D11_INPUT_ELEMENT_DESC layouts[] =
             {
                 {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0}
             };
             UINT uNumElements = ARRAYSIZE(layouts);
-
+            
             hr = m_d3dDevice->CreateInputLayout(
                 layouts,
                 uNumElements,
                 pVSBlob->GetBufferPointer(),
                 pVSBlob->GetBufferSize(),
-                &m_vertexLayout);
-
+                m_vertexLayout.GetAddressOf()
+            );
+            
             if (FAILED(hr)) 
                 return hr;
-
-            pVSBlob->Release();
-            pPSBlob->Release();
         }
     }
 
@@ -288,6 +292,7 @@ namespace library
 
     void Renderer::Render()
     {
+
         UINT stride = sizeof(SimpleVertex);
         UINT offset = 0;
         m_immediateContext->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
@@ -299,8 +304,8 @@ namespace library
 
         m_immediateContext->Draw(3, 0);
 
-        m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_swapChain->Present(0, 0);
+        m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);  //Draw ~ Present 사이에만 없으면 되나 봄.
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -328,6 +333,33 @@ namespace library
     
     HRESULT Renderer::compileShaderFromFile(_In_ PCWSTR pszFileName, _In_ PCSTR pszEntryPoint, _In_ PCSTR szShaderModel, _Outptr_ ID3DBlob** ppBlobOut)
     {
-        return E_NOTIMPL;
+        if (!pszFileName || !pszEntryPoint || !szShaderModel || !ppBlobOut)
+            return E_INVALIDARG;
+
+        *ppBlobOut = nullptr;
+
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined( DEBUG ) || defined( _DEBUG )
+        flags |= D3DCOMPILE_DEBUG;
+#endif
+
+        const D3D_SHADER_MACRO defines[] =
+        {
+            "EXAMPLE_DEFINE", "1",
+            NULL, NULL
+        };
+
+        ComPtr<ID3DBlob> errorBlob = nullptr;
+        HRESULT hr = D3DCompileFromFile(pszFileName, defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            pszEntryPoint, szShaderModel, flags, 0, ppBlobOut, errorBlob.GetAddressOf());
+        if (FAILED(hr))
+        {
+            if (errorBlob)
+                OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+
+            return hr;
+        }
+
+        return hr;
     }
 }
