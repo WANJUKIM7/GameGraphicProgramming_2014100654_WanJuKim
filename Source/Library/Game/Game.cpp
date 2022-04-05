@@ -10,25 +10,25 @@ namespace library
 	  Modifies: [m_pszGameName, m_mainWindow, m_renderer].
 	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
-	Game::Game(PCWSTR pszGameName)
+	Game::Game(_In_ PCWSTR pszGameName)
+		: m_renderer(std::make_unique<library::Renderer>())
+		, m_mainWindow(std::make_unique<library::MainWindow>())
+		, m_pszGameName(pszGameName)
 	{
-		m_renderer = std::make_unique<library::Renderer>();
-		m_mainWindow = std::make_unique<library::MainWindow>();
-		m_pszGameName = pszGameName;
 	}
 
-	/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-	  Method:   Game::Initialize
-	  Summary:  Initializes the components of the game
-	  Args:     HINSTANCE hInstance
-				  Handle to the instance
-				INT nCmdShow
-				  Is a flag that says whether the main application window
-				  will be minimized, maximized, or shown normally
-	  Modifies: [m_mainWindow, m_renderer].
-	  Returns:  HRESULT
-				Status code
-	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+		/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+		  Method:   Game::Initialize
+		  Summary:  Initializes the components of the game
+		  Args:     HINSTANCE hInstance
+					  Handle to the instance
+					INT nCmdShow
+					  Is a flag that says whether the main application window
+					  will be minimized, maximized, or shown normally
+		  Modifies: [m_mainWindow, m_renderer].
+		  Returns:  HRESULT
+					Status code
+		M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
 	HRESULT Game::Initialize(_In_ HINSTANCE hInstance, _In_ INT nCmdShow)
 	{
@@ -75,10 +75,37 @@ namespace library
 	  Returns:  PCWSTR
 				  Name of the game
 	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-	
+
 	PCWSTR Game::GetGameName() const
 	{
 		return m_pszGameName;
 	}
 
+	/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+	  Method:   Game::GetWindow
+
+	  Summary:  Returns the main window
+
+	  Returns:  std::unique_ptr<MainWindow>&
+				  The main window
+	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+
+	std::unique_ptr<MainWindow>& Game::GetWindow()
+	{
+		return m_mainWindow;
+	}
+
+	/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+	  Method:   Game::GetRenderer
+
+	  Summary:  Returns the renderer
+
+	  Returns:  std::unique_ptr<Renderer>&
+				  The renderer
+	M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+
+	std::unique_ptr<Renderer>& Game::GetRenderer()
+	{
+		return m_renderer;
+	}
 }

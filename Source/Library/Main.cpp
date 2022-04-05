@@ -40,3 +40,10 @@ D3D11_BUFFER_DESC bd = {};
 InDexBuffer도 만들고,
 등등
 */
+
+/*
+4.5(화)
+Camel, Pascal, 헝가리언 다 아냐?
+헝가리언 표기법 중에 DWORD dwError 이런 것도 있네.
+psz는 p는 포인터, sz는 string zero뜻함. const char* 같은 거 할 때 하나보네.
+*/
