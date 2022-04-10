@@ -13,4 +13,6 @@ private:
 	PCWSTR name;
 	XMMATRIX m_rotate;
 	XMMATRIX m_orbit;
+	float randNum;
+	bool bSize;
 };
