@@ -57,16 +57,18 @@ protected:
     const library::SimpleVertex* getVertices() const override;
     const WORD* getIndices() const override;
 
+    //Tip : Designated initializer를 말씀하시는 거라면 c++20으로 설정되어 있는지 확인해주세요. Project Setting -> General -> C++ Language Standard가 ISO C++20 Standard여야 합니다.
+    //오 되네.
     static constexpr const library::SimpleVertex VERTICES[] =
     {
-        { .Position = DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f) },
-        { .Position = DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f) },
-        { .Position = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f) },
-        { .Position = DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f) },
-        { .Position = DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f) },
-        { .Position = DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f) },
-        { .Position = DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f) },
-        { .Position = DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f) },
+        { .Position = XMFLOAT3(-1.0f, 1.0f, -1.0f) },
+        { .Position = XMFLOAT3(1.0f, 1.0f, -1.0f) },
+        { .Position = XMFLOAT3(1.0f, 1.0f, 1.0f) },
+        { .Position = XMFLOAT3(-1.0f, 1.0f, 1.0f) },
+        { .Position = XMFLOAT3(-1.0f, -1.0f, -1.0f) },
+        { .Position = XMFLOAT3(1.0f, -1.0f, -1.0f) },
+        { .Position = XMFLOAT3(1.0f, -1.0f, 1.0f) },
+        { .Position = XMFLOAT3(-1.0f, -1.0f, 1.0f) },
     };
     static constexpr const UINT NUM_VERTICES = 8u;
     static constexpr const WORD INDICES[] =

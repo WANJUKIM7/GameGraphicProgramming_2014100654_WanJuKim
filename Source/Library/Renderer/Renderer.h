@@ -87,7 +87,7 @@ namespace library
         ComPtr<ID3D11DepthStencilView> m_depthStencilView;
         XMMATRIX m_view;
         XMMATRIX m_projection;
-
+        
         std::unordered_map<PCWSTR, std::shared_ptr<Renderable>> m_renderables;
         std::unordered_map<PCWSTR, std::shared_ptr<VertexShader>> m_vertexShaders;
         std::unordered_map<PCWSTR, std::shared_ptr<PixelShader>> m_pixelShaders;

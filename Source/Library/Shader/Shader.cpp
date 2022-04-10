@@ -18,11 +18,10 @@ namespace library
 
       Modifies: [m_pszFileName, m_pszEntryPoint, m_pszShaderModel].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     Shader::Shader(_In_ PCWSTR pszFileName, _In_ PCSTR pszEntryPoint, _In_ PCSTR pszShaderModel)
-        : m_pszFileName(L'')
-        , m_pszEntryPoint("")
-        , m_pszShaderModel("")
+        : m_pszFileName(pszFileName)
+        , m_pszEntryPoint(pszEntryPoint)
+        , m_pszShaderModel(pszShaderModel)
     {
     }
 
@@ -34,7 +33,6 @@ namespace library
       Returns:  PCWSTR
                   Shader file name
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     PCWSTR Shader::GetFileName() const
     {
         return m_pszFileName;
@@ -52,8 +50,7 @@ namespace library
       Returns:  HRESULT
                   Status code
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    
-    HRESULT Shader::compile(ID3DBlob** ppOutBlob)
+    HRESULT Shader::compile(_Outptr_ ID3DBlob** ppOutBlob)
     {
         if (!m_pszFileName || !m_pszEntryPoint || !m_pszShaderModel || !ppOutBlob)
             return E_INVALIDARG;
@@ -64,7 +61,6 @@ namespace library
 #if defined( DEBUG ) || defined( _DEBUG )
         flags |= D3DCOMPILE_DEBUG;
 #endif
-
         const D3D_SHADER_MACRO defines[] =
         {
             "EXAMPLE_DEFINE", "1",

@@ -40,7 +40,7 @@ namespace library
     PCWSTR MainWindow::GetWindowClassName() const
     {   
         //이런 게 객체 지향할 때 필요한 거다. 윈도우가 여러 개일 수도 있고...
-        return m_pszWindowName;
+        return L"Window ClassName";
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -58,18 +58,21 @@ namespace library
 
     LRESULT MainWindow::HandleMessage(_In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
     {
+        PAINTSTRUCT ps;
+        HDC hdc;
+
         switch (uMsg)
         {
         case WM_DESTROY:
             PostQuitMessage(0);
-            return 0;
+            break;
 
         case WM_PAINT:
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(m_hWnd, &ps);
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+            hdc = BeginPaint(m_hWnd, &ps);
+            //FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
             EndPaint(m_hWnd, &ps);
+            break;
         }
         return 0;
 

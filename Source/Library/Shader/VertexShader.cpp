@@ -18,7 +18,6 @@ namespace library
 
       Modifies: [m_vertexShader].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     VertexShader::VertexShader(_In_ PCWSTR pszFileName, _In_ PCSTR pszEntryPoint, _In_ PCSTR pszShaderModel)
         : Shader(pszFileName, pszEntryPoint, pszShaderModel)
         , m_vertexShader(nullptr)
@@ -37,9 +36,11 @@ namespace library
       Returns:  HRESULT
                   Status code
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     HRESULT VertexShader::Initialize(_In_ ID3D11Device* pDevice)
     {
+        if (pDevice == nullptr)
+            return E_FAIL;
+
         //Create VertexShader
         ComPtr<ID3DBlob> pVSBlob = nullptr;
         HRESULT hr = compile(pVSBlob.GetAddressOf());
@@ -62,7 +63,7 @@ namespace library
         D3D11_INPUT_ELEMENT_DESC layouts[] =
         {
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
-            {"COLOR", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0}
+            //{"COLOR", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0}
         };
         UINT uNumElements = ARRAYSIZE(layouts);
 
@@ -86,7 +87,6 @@ namespace library
       Returns:  ComPtr<ID3D11VertexShader>&
                   Vertex shader. Could be a nullptr
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11VertexShader>& VertexShader::GetVertexShader()
     {
         return m_vertexShader;
@@ -100,7 +100,6 @@ namespace library
       Returns:  ComPtr<ID3D11InputLayout>&
                   Vertex input layout
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11InputLayout>& VertexShader::GetVertexLayout()
     {
         return m_vertexLayout;

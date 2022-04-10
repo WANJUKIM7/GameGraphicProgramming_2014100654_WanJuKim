@@ -1,12 +1,9 @@
 /*+===================================================================
   File:      RENDERABLE.H
-
   Summary:   Renderable header file contains declarations of
              Renderable class used for the lab samples of Game
              Graphics Programming course.
-
   Classes: Renderable
-
   � 2022 Kyung Hee University
 ===================================================================+*/
 #pragma once
@@ -21,13 +18,11 @@ namespace library
 {
     /*C+C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C
       Class:    Renderable
-
       Summary:  Base class for all renderable classes
-
       Methods:  Initialize
                   Pure virtual function that initializes the object
                 Update
-                  Pure virtual function that updates the object each 
+                  Pure virtual function that updates the object each
                   frame
                 GetVertexBuffer
                   Returns the vertex buffer
@@ -38,10 +33,10 @@ namespace library
                 GetWorldMatrix
                   Returns the world matrix
                 GetNumVertices
-                  Pure virtual function that returns the number of 
+                  Pure virtual function that returns the number of
                   vertices
                 GetNumIndices
-                  Pure virtual function that returns the number of 
+                  Pure virtual function that returns the number of
                   indices
                 Renderable
                   Constructor.
@@ -71,6 +66,13 @@ namespace library
         ComPtr<ID3D11Buffer>& GetIndexBuffer();
         ComPtr<ID3D11Buffer>& GetConstantBuffer();
         const XMMATRIX& GetWorldMatrix() const;
+
+        void RotateX(_In_ FLOAT angle);
+        void RotateY(_In_ FLOAT angle);
+        void RotateZ(_In_ FLOAT angle);
+        void RotateRollPitchYaw(_In_ FLOAT roll, _In_ FLOAT pitch, _In_ FLOAT yaw);
+        void Scale(_In_ FLOAT scaleX, _In_ FLOAT scaleY, _In_ FLOAT scaleZ);
+        void Translate(_In_ const XMVECTOR& offset);
 
         virtual UINT GetNumVertices() const = 0;
         virtual UINT GetNumIndices() const = 0;

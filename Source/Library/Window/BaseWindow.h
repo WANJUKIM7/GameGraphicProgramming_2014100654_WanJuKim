@@ -122,7 +122,9 @@ namespace library
 
     template<class DerivedType>
     inline BaseWindow<DerivedType>::BaseWindow()
-        : m_hInstance(nullptr), m_hWnd(nullptr), m_pszWindowName(L"Default")
+        : m_hInstance(nullptr)
+        , m_hWnd(nullptr)
+        , m_pszWindowName(L"Default")
     {
     }
 
@@ -171,9 +173,16 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
     template<class DerivedType>
-    inline HRESULT BaseWindow<DerivedType>::initialize(HINSTANCE hInstance, INT nCmdShow,
-        PCWSTR pszWindowName, DWORD dwStyle, INT x, INT y, INT nWidth, INT nHeight,
-        HWND hWndParent, HMENU hMenu)
+    inline HRESULT BaseWindow<DerivedType>::initialize(HINSTANCE hInstance
+        , INT nCmdShow
+        , PCWSTR pszWindowName
+        , DWORD dwStyle
+        , INT x
+        , INT y
+        , INT nWidth
+        , INT nHeight
+        , HWND hWndParent
+        , HMENU hMenu)
     {
         // Register class
         WNDCLASSEX wcex;
@@ -206,20 +215,19 @@ namespace library
 
         /*RECT rc = { 0, 0, 800, 600 };
         AdjustWindowRect(&rc, dwStyle, FALSE);*/
-        hWndParent = CreateWindow(GetWindowClassName(), pszWindowName,
+        m_hWnd = CreateWindow(GetWindowClassName(), pszWindowName,
             dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, this);
-        //QUESTION : x,y,nWidth,nHeight 인수 받아주면 직사각형 나오는데, 인수 받아주는 이유는?
+        //Question : x,y,nWidth,nHeight 인수 받아주면 직사각형 나오는데, 인수 받아주는 이유는?
         // →HRESULT MainWindow::Initialize(HINSTANCE hInstance, INT nCmdShow, PCWSTR pszWindowName) 여기서 수정하는 사람도 있는데 별 상관은 없을듯?
-        //QUESTION : CreateWindow()맨 마지막 변수 pState했다가 안돼서 this넣으니까 되네. 도대체 무슨 차이일까?
+        //Question : CreateWindow()맨 마지막 변수 pState했다가 안돼서 this넣으니까 되네. 도대체 무슨 차이일까?
         // →윈도우 나 써달라는거임. pState는 다른 윈도우.
         //딱히 밖에서 수정하는 것도 아니고 ㄷㄷ.
         //TIP : WindowClassName이랑 WindowName이랑 다르다.
-        if (!hWndParent)
+        if (!m_hWnd)
             return E_FAIL;
 
-        ShowWindow(hWndParent, nCmdShow);
+        ShowWindow(m_hWnd, nCmdShow);
 
-        m_hWnd = hWndParent;
         m_hInstance = hInstance;
         m_pszWindowName = pszWindowName;
 

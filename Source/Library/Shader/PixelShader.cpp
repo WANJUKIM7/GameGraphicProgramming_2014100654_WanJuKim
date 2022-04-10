@@ -39,6 +39,9 @@ namespace library
 
     HRESULT PixelShader::Initialize(_In_ ID3D11Device* pDevice)
     {
+        if (pDevice == nullptr)
+            return E_FAIL;
+
         ComPtr<ID3DBlob> pPSBlob = nullptr;
         HRESULT hr = compile(pPSBlob.GetAddressOf());
 

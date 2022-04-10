@@ -13,9 +13,7 @@
 
 #include <memory>
 
-/*--------------------------------------------------------------------
-  TODO: Include custom cubes (remove the comment)
---------------------------------------------------------------------*/
+#include "Cube/CenterCube.h"
 #include "Game/Game.h"
 
 /*F+F+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -62,11 +60,16 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     {
         return 0;
     }
+    
+    std::shared_ptr<CenterCube> centerCube = std::make_shared<CenterCube>(L"Center");
+    centerCube->SetVertexShader(vertexShader);
+    centerCube->SetPixelShader(pixelShader);
+    game->GetRenderer()->AddRenderable(L"CenterCube", centerCube);
 
-    /*--------------------------------------------------------------------
-      TODO: Add your cubes and set their shaders (remove the comment)
-    --------------------------------------------------------------------*/
-
+    std::shared_ptr<CenterCube> orbitCube = std::make_shared<CenterCube>(L"Orbit");
+    orbitCube->SetVertexShader(vertexShader);
+    orbitCube->SetPixelShader(pixelShader);
+    game->GetRenderer()->AddRenderable(L"Orbit", orbitCube);
     if (FAILED(game->Initialize(hInstance, nCmdShow)))
     {
         return 0;
