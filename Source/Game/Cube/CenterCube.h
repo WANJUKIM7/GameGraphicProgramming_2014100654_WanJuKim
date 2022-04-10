@@ -11,4 +11,6 @@ public:
 	virtual void Update(FLOAT deltaTime) override;
 private:
 	PCWSTR name;
+	XMMATRIX m_rotate;
+	XMMATRIX m_orbit;
 };

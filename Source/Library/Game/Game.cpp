@@ -74,18 +74,17 @@ namespace library
 				elapsedMicroseconds.QuadPart *= 1000000;
 				elapsedMicroseconds.QuadPart /= frequency.QuadPart;	//이제야 second.
 				deltaTime = (float)elapsedMicroseconds.QuadPart / 1000000.0f;	//micro 원상복귀. 위에서 곱해줘서 다시 나눠준 거임.
+
+				QueryPerformanceFrequency(&frequency);	//이거 여기다 안 하면 마우스 움직일 때만 움직이더라.
+				QueryPerformanceCounter(&startingTime);
 				
 				WCHAR szDebugMessage[64];  // 배열의 크기는 메시지의 길이에 따라 조정하시면 됩니다
 				swprintf_s(szDebugMessage, L"deltaTime: %f\n", deltaTime);
 				OutputDebugString(szDebugMessage);
 
-				//deltaTime = elapsedMicroseconds.QuadPart;
 				//us = 10^-6 s
 				m_renderer.get()->Update(deltaTime);
 				m_renderer.get()->Render();
-
-				QueryPerformanceFrequency(&frequency);
-				QueryPerformanceCounter(&startingTime);
 			}
 		}
 

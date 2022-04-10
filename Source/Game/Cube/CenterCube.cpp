@@ -2,19 +2,9 @@
 
 CenterCube::CenterCube(PCWSTR name)
 	: name(name)
+	, m_rotate(XMMatrixIdentity())
+	, m_orbit(XMMatrixIdentity())
 {
-	m_world = XMMatrixIdentity();
-	if (name == L"Center")
-	{
-		m_world *= XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-		m_world *= XMMatrixScaling(1.0f, 1.0f, 1.0f);
-		m_world *= XMMatrixRotationY(0.0f);
-	}
-	else if (name == L"Orbit")
-	{
-		m_world *= XMMatrixScaling(0.3f, 0.3f, 0.3f);
-		m_world *= XMMatrixTranslation(4.0f, 0.0f, 0.0f);
-	}
 }
 
 void CenterCube::Update(FLOAT deltaTime)
@@ -25,9 +15,8 @@ void CenterCube::Update(FLOAT deltaTime)
 	}
 	else if (name == L"Orbit")
 	{
-		m_world *= XMMatrixTranslation(-4.0f, 0.0f, 0.0f);
-		RotateZ(-1.0f * deltaTime);
-		m_world *= XMMatrixTranslation(4.0f, 0.0f, 0.0f);
-		RotateY(2.0f * -1.0f * deltaTime);
+		m_rotate *= XMMatrixRotationZ(-1.0f * deltaTime);
+		m_orbit *= XMMatrixRotationY(2.0f * -1.0f * deltaTime);
+		m_world = XMMatrixScaling(0.3f, 0.3f, 0.3f) * m_rotate * XMMatrixTranslation(-4.0f, 0.0f, 0.0f) * m_orbit;
 	}
 }
