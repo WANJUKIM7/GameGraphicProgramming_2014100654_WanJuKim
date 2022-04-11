@@ -66,7 +66,7 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     centerCube->SetPixelShader(pixelShader);
     game->GetRenderer()->AddRenderable(L"CenterCube", centerCube);
 
-    std::shared_ptr<CenterCube> orbitCube = std::make_shared<CenterCube>(L"Orbit");
+    /*std::shared_ptr<CenterCube> orbitCube = std::make_shared<CenterCube>(L"Orbit");
     orbitCube->SetVertexShader(vertexShader);
     orbitCube->SetPixelShader(pixelShader);
     game->GetRenderer()->AddRenderable(L"OrbitCube", orbitCube);
@@ -74,7 +74,7 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     std::shared_ptr<CenterCube> customCube = std::make_shared<CenterCube>(L"CustomCube");
     customCube->SetVertexShader(vertexShader);
     customCube->SetPixelShader(pixelShader);
-    game->GetRenderer()->AddRenderable(L"CustomCube", customCube);
+    game->GetRenderer()->AddRenderable(L"CustomCube", customCube);*/
     if (FAILED(game->Initialize(hInstance, nCmdShow)))
     {
         return 0;

@@ -26,7 +26,7 @@ namespace library
         , m_renderTargetView(nullptr)
         , m_depthStencil(nullptr)
         , m_depthStencilView(nullptr)
-        , m_view(XMMatrixIdentity())
+        , m_camera(XMVectorZero())
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
         , m_vertexShaders() //TIP : default는 이런 식으로 하는 거야~.  default가 있다는 거 자체가 default로 생성해도 괜찮다는 거. 없으면 그렇게 하면 안 된다는 거. 이게 바로 암묵적인 룰?
@@ -59,6 +59,24 @@ namespace library
         UINT width = rc.right - (UINT)rc.left;
         UINT height = rc.bottom - (UINT)rc.top;
 
+        //마우스 고정
+        POINT p1, p2;
+        p1.x = rc.left;
+        p1.y = rc.top;
+        p2.x = rc.right;
+        p2.y = rc.bottom;
+
+        ClientToScreen(hWnd, &p1);
+        ClientToScreen(hWnd, &p2);
+
+        rc.left = p1.x;
+        rc.top = p1.y - 25; //QUESTION : ^^;;
+        rc.right = p2.x;
+        rc.bottom = p2.y;
+
+        ClipCursor(&rc);
+
+        //Create device
         UINT createDeviceFlags = 0;
 #ifdef _DEBUG
         createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -160,7 +178,7 @@ namespace library
             sd.OutputWindow = hWnd;
             sd.SampleDesc.Count = 1;
             sd.SampleDesc.Quality = 0;
-            sd.Windowed = TRUE;
+            sd.Windowed = false;
 
             hr = factory->CreateSwapChain(m_d3dDevice.Get(), &sd, m_swapChain.GetAddressOf());
         }
@@ -254,11 +272,11 @@ namespace library
         }
 
         //initialize matrices
-        XMVECTOR eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
+        /*XMVECTOR eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
         XMVECTOR at = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-        XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+        XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);*/
         //TIP : at 방향이 아니라 지점임. up은 방향.
-        m_view = XMMatrixLookAtLH(eye, at, up);
+        //m_view = XMMatrixLookAtLH(eye, at, up);
         m_projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<FLOAT>(width) / static_cast<FLOAT>(height), 0.01f, 100.0f);
 
         for (auto m_renderable = begin(m_renderables); m_renderable != end(m_renderables); m_renderable++)
@@ -288,7 +306,9 @@ namespace library
       Returns:  HRESULT
                   Status code.
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    HRESULT Renderer::AddRenderable(_In_ PCWSTR pszRenderableName, _In_ const std::shared_ptr<Renderable>& renderable)
+    HRESULT Renderer::AddRenderable(
+        _In_ PCWSTR pszRenderableName,
+        _In_ const std::shared_ptr<Renderable>& renderable)
     {
         if (m_renderables.find(pszRenderableName) == m_renderables.end())
         {
@@ -314,7 +334,9 @@ namespace library
       Returns:  HRESULT
                   Status code
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    HRESULT Renderer::AddVertexShader(_In_ PCWSTR pszVertexShaderName, _In_ const std::shared_ptr<VertexShader>& vertexShader)
+    HRESULT Renderer::AddVertexShader(
+        _In_ PCWSTR pszVertexShaderName,
+        _In_ const std::shared_ptr<VertexShader>& vertexShader)
     {
         if (m_vertexShaders.find(pszVertexShaderName) == m_vertexShaders.end())
         {
@@ -340,7 +362,9 @@ namespace library
       Returns:  HRESULT
                   Status code
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    HRESULT Renderer::AddPixelShader(_In_ PCWSTR pszPixelShaderName, _In_ const std::shared_ptr<PixelShader>& pixelShader)
+    HRESULT Renderer::AddPixelShader(
+        _In_ PCWSTR pszPixelShaderName,
+        _In_ const std::shared_ptr<PixelShader>& pixelShader)
     {
         if (m_pixelShaders.find(pszPixelShaderName) == m_pixelShaders.end())
         {
@@ -349,6 +373,30 @@ namespace library
         }
         else
             return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::HandleInput
+
+      Summary:  Add the pixel shader into the renderer and initialize it
+
+      Args:     const DirectionsInput& directions
+                  Data structure containing keyboard input data
+                const MouseRelativeMovement& mouseRelativeMovement
+                  Data structure containing mouse relative input data
+
+      Modifies: [m_camera].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderer::HandleInput(
+        _In_ const DirectionsInput& directions, 
+        _In_ const MouseRelativeMovement& mouseRelativeMovement, 
+        _In_ FLOAT deltaTime)
+    {
+        m_camera.HandleInput(
+            directions,
+            mouseRelativeMovement,
+            deltaTime
+        );
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -361,6 +409,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Renderer::Update(_In_ FLOAT deltaTime)
     {
+        m_camera.Update(deltaTime);
         for (auto m_renderable : m_renderables)
         {
             m_renderable.second->Update(deltaTime);
@@ -390,10 +439,11 @@ namespace library
             ConstantBuffer cb;
             ZeroMemory(&cb, sizeof(ConstantBuffer));
             cb.World = m_renderable.second->GetWorldMatrix();
-            
+            cb.View = m_camera.GetView();
+
             //Transpose
             cb.World = XMMatrixTranspose(cb.World);
-            cb.View = XMMatrixTranspose(m_view);
+            cb.View = XMMatrixTranspose(cb.View);
             cb.Projection = XMMatrixTranspose(m_projection);
 
             m_immediateContext->UpdateSubresource(m_renderable.second->GetConstantBuffer().Get(), 0, nullptr, &cb, 0u, 0u);

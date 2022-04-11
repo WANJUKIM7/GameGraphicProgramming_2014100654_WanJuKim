@@ -111,6 +111,7 @@ copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Release"</Command>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Camera\Camera.cpp" />
     <ClCompile Include="Game\Game.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Renderer\Renderable.cpp" />
@@ -121,6 +122,7 @@ copy "$(TargetDir)" "$(SolutionDir)..\Library\x64\Release"</Command>
     <ClCompile Include="Window\MainWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera\Camera.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Game\Game.h" />
     <ClInclude Include="Renderer\DataTypes.h" />

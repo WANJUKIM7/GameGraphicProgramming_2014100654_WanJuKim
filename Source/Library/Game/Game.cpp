@@ -69,6 +69,7 @@ namespace library
 			}
 			else
 			{
+				//Time
 				QueryPerformanceCounter(&endingTime);
 				elapsedMicroseconds.QuadPart = endingTime.QuadPart - startingTime.QuadPart;	//second 아님. tick임.
 				elapsedMicroseconds.QuadPart *= 1000000;
@@ -78,9 +79,13 @@ namespace library
 				QueryPerformanceFrequency(&frequency);	//이거 여기다 안 하면 마우스 움직일 때만 움직이더라.
 				QueryPerformanceCounter(&startingTime);
 				
-				WCHAR szDebugMessage[64];  // 배열의 크기는 메시지의 길이에 따라 조정하시면 됩니다
-				swprintf_s(szDebugMessage, L"deltaTime: %f\n", deltaTime);
-				OutputDebugString(szDebugMessage);
+				//Keyboard & Mouse
+				m_renderer->HandleInput(m_mainWindow->GetDirections(),m_mainWindow->GetMouseRelativeMovement(),deltaTime);
+				m_mainWindow->ResetMouseMovement();
+
+				//WCHAR szDebugMessage[64];  // 배열의 크기는 메시지의 길이에 따라 조정하시면 됩니다
+				//swprintf_s(szDebugMessage, L"deltaTime: %f\n", deltaTime);
+				//OutputDebugString(szDebugMessage);
 
 				//us = 10^-6 s
 				m_renderer.get()->Update(deltaTime);

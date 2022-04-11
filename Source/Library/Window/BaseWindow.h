@@ -231,6 +231,20 @@ namespace library
         m_hInstance = hInstance;
         m_pszWindowName = pszWindowName;
 
+        //이걸 해야지 WM_INPUT에 디버깅 걸리네.
+#ifndef HID_USAGE_PAGE_GENERIC
+#define HID_USAGE_PAGE_GENERIC         ((USHORT) 0x01)
+#endif
+#ifndef HID_USAGE_GENERIC_MOUSE
+#define HID_USAGE_GENERIC_MOUSE        ((USHORT) 0x02)
+#endif
+        RAWINPUTDEVICE Rid[1];
+        Rid[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+        Rid[0].usUsage = HID_USAGE_GENERIC_MOUSE;
+        Rid[0].dwFlags = RIDEV_INPUTSINK;
+        Rid[0].hwndTarget = m_hWnd;
+        RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
+
         return S_OK;
     }
 }

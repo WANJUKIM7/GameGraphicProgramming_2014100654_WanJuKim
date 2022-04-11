@@ -64,14 +64,81 @@ namespace library
         switch (uMsg)
         {
         case WM_DESTROY:
+        {
             PostQuitMessage(0);
             break;
-
+        }
         case WM_PAINT:
         {
             hdc = BeginPaint(m_hWnd, &ps);
             //FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
             EndPaint(m_hWnd, &ps);
+            break;
+        }
+        case WM_INPUT:
+        {
+            UINT dataSize = 0u;
+            GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, NULL, &dataSize, sizeof(RAWINPUTHEADER));
+            if (dataSize > 0u)
+            {
+                std::unique_ptr<BYTE[]> rawdata = std::make_unique<BYTE[]>(dataSize);
+                if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawdata.get(), &dataSize, sizeof(RAWINPUTHEADER)))
+                {
+                    RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(rawdata.get());
+                    if (raw->header.dwType == RIM_TYPEMOUSE)
+                    {
+                        m_mouseRelativeMovement.X = raw->data.mouse.lLastX;
+                        m_mouseRelativeMovement.Y = raw->data.mouse.lLastY;
+                    }
+                }
+            }
+
+            return DefWindowProc(m_hWnd, uMsg, wParam, lParam);
+        }
+        case WM_KEYDOWN:
+        {
+            if (wParam == 'W')
+            {
+                m_directions.bFront = true;
+                m_directions.bBack = false;
+            }
+            else if (wParam == 'S')
+            {
+                m_directions.bBack = true;
+                m_directions.bFront = false;;
+            }
+
+            if (wParam == 'D')
+            {
+                m_directions.bRight = true;
+                m_directions.bLeft = false;
+            }
+            else if (wParam == 'A')
+            {
+                m_directions.bLeft = true;
+                m_directions.bRight = false;;
+            }
+
+            if (wParam == VK_SPACE)
+            {
+                m_directions.bUp = true;
+                m_directions.bDown = false;
+            }
+            else if (wParam == VK_SHIFT)
+            {
+                m_directions.bDown = true;
+                m_directions.bUp = false;;
+            }
+            break;
+        }
+        case WM_KEYUP:
+        {
+            m_directions.bFront = false;
+            m_directions.bBack = false;
+            m_directions.bRight = false;
+            m_directions.bLeft = false;
+            m_directions.bUp = false;
+            m_directions.bDown = false;
             break;
         }
         return 0;
@@ -80,5 +147,41 @@ namespace library
             return DefWindowProc(m_hWnd, uMsg, wParam, lParam);
         }
         return TRUE;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   MainWindow::GetDirections
+
+      Summary:  Returns the keyboard direction input
+
+      Returns:  const DirectionsInput&
+                  Keyboard direction input
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    const DirectionsInput& MainWindow::GetDirections() const
+    {
+        return m_directions;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   MainWindow::GetMouseRelativeMovement
+
+      Summary:  Returns the mouse relative movement
+
+      Returns:  const MouseRelativeMovement&
+                  Mouse relative movement
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    const MouseRelativeMovement& MainWindow::GetMouseRelativeMovement() const
+    {
+        return m_mouseRelativeMovement;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   MainWindow::ResetMouseMovement
+
+      Summary:  Reset the mouse relative movement to zero
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void MainWindow::ResetMouseMovement()
+    {
+        ZeroMemory(&m_mouseRelativeMovement, sizeof(MouseRelativeMovement));
     }
 }
