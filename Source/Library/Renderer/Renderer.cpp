@@ -26,7 +26,7 @@ namespace library
         , m_renderTargetView(nullptr)
         , m_depthStencil(nullptr)
         , m_depthStencilView(nullptr)
-        , m_camera(XMVectorZero())
+        , m_camera(XMVectorSet(0.0f,0.0f,-5.0f,0.0f))
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
         , m_vertexShaders() //TIP : default는 이런 식으로 하는 거야~.  default가 있다는 거 자체가 default로 생성해도 괜찮다는 거. 없으면 그렇게 하면 안 된다는 거. 이게 바로 암묵적인 룰?

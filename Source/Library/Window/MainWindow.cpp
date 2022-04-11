@@ -100,12 +100,10 @@ namespace library
             if (wParam == 'W')
             {
                 m_directions.bFront = true;
-                m_directions.bBack = false;
             }
             else if (wParam == 'S')
             {
                 m_directions.bBack = true;
-                m_directions.bFront = false;;
             }
 
             if (wParam == 'D')
@@ -118,7 +116,7 @@ namespace library
                 m_directions.bLeft = true;
                 m_directions.bRight = false;;
             }
-
+            
             if (wParam == VK_SPACE)
             {
                 m_directions.bUp = true;
