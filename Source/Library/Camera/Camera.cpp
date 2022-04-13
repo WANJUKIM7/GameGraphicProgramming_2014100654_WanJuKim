@@ -134,6 +134,10 @@ namespace library
 
             m_pitch += mouseRelativeMovement.Y * m_rotationSpeed;
         }
+        if (m_pitch < -XM_PIDIV2)
+            m_pitch = -XM_PIDIV2;
+        else if (m_pitch > XM_PIDIV2)
+            m_pitch = XM_PIDIV2;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
