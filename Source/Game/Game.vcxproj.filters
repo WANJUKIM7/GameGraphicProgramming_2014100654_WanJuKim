@@ -21,7 +21,10 @@
     <ClCompile Include="Cube\BaseCube.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Cube\CenterCube.cpp">
+    <ClCompile Include="Cube\Cube.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Cube\Cube1.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -29,7 +32,10 @@
     <ClInclude Include="Cube\BaseCube.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Cube\CenterCube.h">
+    <ClInclude Include="Cube\Cube.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Cube\Cube1.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

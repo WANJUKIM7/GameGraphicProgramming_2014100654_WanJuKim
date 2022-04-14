@@ -47,3 +47,11 @@ Camel, Pascal, 헝가리언 다 아냐?
 헝가리언 표기법 중에 DWORD dwError 이런 것도 있네.
 psz는 p는 포인터, sz는 string zero뜻함. const char* 같은 거 할 때 하나보네.
 */
+
+/*
+4.12(화)
+QUESTION : cpp들을 library 안에다가 하는 이유는 무엇인가?
+4.13(수)
+QUESTION : 왜 이렇게 객체가 많은 건가? window, renderer, game 등등... 객체가 많을 수록 좋은 건가? 이게 객체화 프로그래밍?
+QUESITON : 추가 종속성, 링커 이런 거 다 아냐?
+*/

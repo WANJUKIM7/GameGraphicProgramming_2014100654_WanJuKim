@@ -1,7 +1,33 @@
 #include "Renderer/Renderable.h"
+#include "Texture/DDSTextureLoader.h"
 
 namespace library
 {
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::Renderable
+
+      Summary:  Constructor
+
+      Args:     const std::filesystem::path& textureFilePath
+                  Path to the texture to use
+
+      Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer,
+                 m_textureRV, m_samplerLinear, m_vertexShader,
+                 m_pixelShader, m_textureFilePath, m_world].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    Renderable::Renderable(_In_ const std::filesystem::path& textureFilePath)
+        : m_vertexBuffer(nullptr)
+        , m_indexBuffer(nullptr)
+        , m_constantBuffer(nullptr)
+        , m_textureRV(nullptr)
+        , m_samplerLinear(nullptr)
+        , m_vertexShader(nullptr)
+        , m_pixelShader(nullptr)
+        , m_textureFilePath(textureFilePath)
+        , m_world(XMMatrixIdentity())
+    {
+    }
+
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::initialize
 
@@ -27,31 +53,54 @@ namespace library
         
         //Create VertexBuffer
         {
-            D3D11_BUFFER_DESC bd;
-            ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
-            bd.Usage = D3D11_USAGE_DEFAULT;
-            bd.ByteWidth = sizeof(SimpleVertex) * 8;
-            bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-            bd.CPUAccessFlags = 0;
-            bd.MiscFlags = 0;
-
             SimpleVertex vertices[] =
             {
-                XMFLOAT3(-1.0f, 1.0f, -1.0f),
-                XMFLOAT3(1.0f, 1.0f, -1.0f),
-                XMFLOAT3(1.0f, 1.0f, 1.0f),
-                XMFLOAT3(-1.0f, 1.0f, 1.0f),
-                XMFLOAT3(-1.0f, -1.0f, -1.0f),
-                XMFLOAT3(1.0f, -1.0f, -1.0f),
-                XMFLOAT3(1.0f, -1.0f, 1.0f),
-                XMFLOAT3(-1.0f, -1.0f, 1.0f)
+                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) }, //QUESTION : indexbuffer은 무의미 해지는 것인가?
+                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
             };
 
-            D3D11_SUBRESOURCE_DATA initData;
-            ZeroMemory(&initData, sizeof(D3D11_SUBRESOURCE_DATA));
-            initData.pSysMem = vertices;
-            initData.SysMemPitch = 0;
-            initData.SysMemSlicePitch = 0;
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(SimpleVertex) * 24,
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_VERTEX_BUFFER,
+                .CPUAccessFlags = 0,
+                .MiscFlags = 0
+            };
+
+            D3D11_SUBRESOURCE_DATA initData =
+            {
+                .pSysMem = vertices,
+                .SysMemPitch = 0,
+                .SysMemSlicePitch = 0
+            };
             hr = pDevice->CreateBuffer(&bd, &initData, m_vertexBuffer.GetAddressOf());
 
             if (FAILED(hr))
@@ -62,38 +111,40 @@ namespace library
         {
             UINT indices[] =
             {
-                3,1,0,
-                2,1,3,
+                0,2,1,
+                0,3,2,
 
-                0,5,4,
-                1,5,0,
+                4,5,6,
+                4,6,7,
 
-                3,4,7,
-                0,4,3,
+                8,10,9,
+                8,11,10,
 
-                1,6,5,
-                2,6,1,
+                12,13,14,
+                12,14,15,
 
-                2,7,6,
-                3,7,2,
+                16,18,17,
+                16,19,18,
 
-                6,4,5,
-                7,4,6,
+                20,21,22,
+                20,22,23,
             };
 
-            D3D11_BUFFER_DESC bd;
-            ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
-            bd.Usage = D3D11_USAGE_DEFAULT;
-            bd.ByteWidth = sizeof(UINT) * 36;
-            bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            bd.CPUAccessFlags = 0;
-            bd.MiscFlags = 0;
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(UINT) * 36,
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_INDEX_BUFFER,
+                .CPUAccessFlags = 0,
+                .MiscFlags = 0
+            };
 
-            D3D11_SUBRESOURCE_DATA initData;
-            ZeroMemory(&initData, sizeof(D3D11_SUBRESOURCE_DATA));
-            initData.pSysMem = indices;
-            initData.SysMemPitch = 0;
-            initData.SysMemSlicePitch = 0;
+            D3D11_SUBRESOURCE_DATA initData = 
+            {
+                .pSysMem = indices,
+                .SysMemPitch = 0,
+                .SysMemSlicePitch = 0
+            };
             hr = pDevice->CreateBuffer(&bd, &initData, m_indexBuffer.GetAddressOf());
 
             if (FAILED(hr))
@@ -104,19 +155,39 @@ namespace library
         {
             m_world = XMMatrixIdentity();
             //TIP : D3D11_USAGE_DYNAMIC은 메모리 변경 == size 변경일 때 사용하는 거였어. 그냥 수정이 아니라.
-            D3D11_BUFFER_DESC bd;
-            ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
-            bd.Usage = D3D11_USAGE_DEFAULT;
-            bd.ByteWidth = sizeof(ConstantBuffer);
-            bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            bd.CPUAccessFlags = 0;
-            bd.MiscFlags = 0;
-            bd.StructureByteStride = 0;
-
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(CBChangesEveryFrame),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u
+            };
             hr = pDevice->CreateBuffer(&bd, 0, m_constantBuffer.GetAddressOf());
             if (FAILED(hr))
                 return hr;
         }
+
+        // Load the Texture
+        hr = CreateDDSTextureFromFile(pDevice, m_textureFilePath.filename().wstring().c_str(), nullptr, m_textureRV.GetAddressOf());
+        if (FAILED(hr))
+            return hr;
+            
+        // Create the sample state
+        D3D11_SAMPLER_DESC sampDesc =    //TIP : 이런 방법이 desginated initialize. 장점은? 생성할 때 한번에 하기 때문에 효율적. 할당은 하나씩 하나씩 함.
+        {
+            .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+            .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+            .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+            .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+            .ComparisonFunc = D3D11_COMPARISON_NEVER,
+            .MinLOD = 0,
+            .MaxLOD = D3D11_FLOAT32_MAX
+        };
+        hr = pDevice->CreateSamplerState(&sampDesc, m_samplerLinear.GetAddressOf());
+        if (FAILED(hr))
+            return hr;
 
         return hr;
     }
@@ -132,7 +203,6 @@ namespace library
 
       Modifies: [m_vertexShader].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     void Renderable::SetVertexShader(_In_ const std::shared_ptr<VertexShader>& vertexShader)
     {
         m_vertexShader = vertexShader;
@@ -149,7 +219,6 @@ namespace library
 
       Modifies: [m_pixelShader].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     void Renderable::SetPixelShader(_In_ const std::shared_ptr<PixelShader>& pixelShader)
     {
         m_pixelShader = pixelShader;
@@ -163,7 +232,6 @@ namespace library
       Returns:  ComPtr<ID3D11VertexShader>&
                   Vertex shader. Could be a nullptr
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11VertexShader>& Renderable::GetVertexShader()
     {
         return m_vertexShader->GetVertexShader();
@@ -177,7 +245,6 @@ namespace library
       Returns:  ComPtr<ID3D11PixelShader>&
                   Pixel shader. Could be a nullptr
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11PixelShader>& Renderable::GetPixelShader()
     {
         return m_pixelShader->GetPixelShader();
@@ -191,7 +258,6 @@ namespace library
       Returns:  ComPtr<ID3D11InputLayout>&
                   Vertex input layout
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11InputLayout>& Renderable::GetVertexLayout()
     {
         return m_vertexShader->GetVertexLayout();
@@ -205,7 +271,6 @@ namespace library
       Returns:  ComPtr<ID3D11Buffer>&
                   Vertex buffer
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11Buffer>& Renderable::GetVertexBuffer()
     {
         return m_vertexBuffer;
@@ -219,7 +284,6 @@ namespace library
       Returns:  ComPtr<ID3D11Buffer>&
                   Index buffer
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11Buffer>& Renderable::GetIndexBuffer()
     {
         return m_indexBuffer;
@@ -233,7 +297,6 @@ namespace library
       Returns:  ComPtr<ID3D11Buffer>&
                   Constant buffer
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     ComPtr<ID3D11Buffer>& Renderable::GetConstantBuffer()
     {
         return m_constantBuffer;
@@ -247,89 +310,34 @@ namespace library
       Returns:  const XMMATRIX&
                   World matrix
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
     const XMMATRIX& Renderable::GetWorldMatrix() const
     {
         return m_world;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::RotateX
-      Summary:  Rotates around the x-axis
-      Args:     FLOAT angle
-                  Angle of rotation around the x-axis, in radians
-      Modifies: [m_world].
+      Method:   Renderable::GetTextureResourceView
+
+      Summary:  Returns the texture resource view
+
+      Returns:  ComPtr<ID3D11ShaderResourceView>&
+                  The texture resource view
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::RotateX(_In_ FLOAT angle)
+    ComPtr<ID3D11ShaderResourceView>& Renderable::GetTextureResourceView()
     {
-        m_world *= XMMatrixRotationX(angle);
+        return m_textureRV;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::RotateY
-      Summary:  Rotates around the y-axis
-      Args:     FLOAT angle
-                  Angle of rotation around the y-axis, in radians
-      Modifies: [m_world].
-    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::RotateY(_In_ FLOAT angle)
-    {
-        m_world *= XMMatrixRotationY(angle);
-    }
+      Method:   Renderable::GetSamplerState
 
-    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::RotateZ
-      Summary:  Rotates around the z-axis
-      Args:     FLOAT angle
-                  Angle of rotation around the z-axis, in radians
-      Modifies: [m_world].
-    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::RotateZ(_In_ FLOAT angle)
-    {
-        m_world *= XMMatrixRotationZ(angle);
-    }
+      Summary:  Returns the sampler state
 
-    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::RotateRollPitchYaw
-      Summary:  Rotates based on a given pitch, yaw, and roll (Euler angles)
-      Args:     FLOAT pitch
-                  Angle of rotation around the x-axis, in radians
-                FLOAT yaw
-                  Angle of rotation around the y-axis, in radians
-                FLOAT roll
-                  Angle of rotation around the z-axis, in radians
-      Modifies: [m_world].
+      Returns:  ComPtr<ID3D11SamplerState>&
+                  The sampler state
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::RotateRollPitchYaw(_In_ FLOAT pitch, _In_ FLOAT yaw, _In_ FLOAT roll)
+    ComPtr<ID3D11SamplerState>& Renderable::GetSamplerState()
     {
-        m_world *= XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
-    }
-
-    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::Scale
-      Summary:  Scales along the x-axis, y-axis, and z-axis
-      Args:     FLOAT scaleX
-                  Scaling factor along the x-axis.
-                FLOAT scaleY
-                  Scaling factor along the y-axis.
-                FLOAT scaleZ
-                  Scaling factor along the z-axis.
-      Modifies: [m_world].
-    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::Scale(_In_ FLOAT scaleX, _In_ FLOAT scaleY, _In_ FLOAT scaleZ)
-    {
-        m_world *= XMMatrixScaling(scaleX, scaleY, scaleZ);
-    }
-
-    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-      Method:   Renderable::Translate
-      Summary:  Translates matrix from a vector
-      Args:     const XMVECTOR& offset
-                  3D vector describing the translations along the x-axis, y-axis, and z-axis
-      Modifies: [m_world].
-    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    void Renderable::Translate(_In_ const XMVECTOR& offset)
-    {
-        m_world *= XMMatrixTranslationFromVector(offset);
+        return m_samplerLinear;
     }
 }

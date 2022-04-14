@@ -3,15 +3,17 @@
 namespace library
 {
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-     Method:   Renderer::Renderer
+      Method:   Renderer::Renderer
 
-     Summary:  Constructor
+      Summary:  Constructor
 
-     Modifies: [m_driverType, m_featureLevel, m_d3dDevice, m_d3dDevice1,
+      Modifies: [m_driverType, m_featureLevel, m_d3dDevice, m_d3dDevice1,
                  m_immediateContext, m_immediateContext1, m_swapChain,
-                 m_swapChain1, m_renderTargetView, m_vertexShader,
-                 m_pixelShader, m_vertexLayout, m_vertexBuffer].
-   M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+                 m_swapChain1, m_renderTargetView, m_depthStencil,
+                 m_depthStencilView, m_cbChangeOnResize, m_camera,
+                 m_projection, m_renderables, m_vertexShaders,
+                 m_pixelShaders].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
 
    //TIP : 이니셜라이저랑 할당은 매우 다르다. 초기화를 해줘야 처음부터 '유효한 개체'라고 할 수 있다. 무조건 필요하다 그런 건가?
     Renderer::Renderer()
@@ -26,6 +28,8 @@ namespace library
         , m_renderTargetView(nullptr)
         , m_depthStencil(nullptr)
         , m_depthStencilView(nullptr)
+        , m_cbChangeOnResize(nullptr)
+        , m_padding()
         , m_camera(XMVectorSet(0.0f,0.0f,-5.0f,0.0f))
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
@@ -43,9 +47,10 @@ namespace library
                   Handle to the window
 
       Modifies: [m_d3dDevice, m_featureLevel, m_immediateContext,
-                  m_d3dDevice1, m_immediateContext1, m_swapChain1,
-                  m_swapChain, m_renderTargetView, m_vertexShader,
-                  m_vertexLayout, m_pixelShader, m_vertexBuffer].
+                 m_d3dDevice1, m_immediateContext1, m_swapChain1,
+                 m_swapChain, m_renderTargetView, m_cbChangeOnResize,
+                 m_projection, m_camera, m_vertexShaders,
+                 m_pixelShaders, m_renderables].
 
       Returns:  HRESULT
                   Status code
@@ -147,15 +152,20 @@ namespace library
                 (void)m_immediateContext.As(&m_immediateContext1);
             }
 
-            DXGI_SWAP_CHAIN_DESC1 sd;
-            ZeroMemory(&sd, sizeof(DXGI_SWAP_CHAIN_DESC1));
-            sd.Width = width;
-            sd.Height = height;
-            sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            sd.SampleDesc.Count = 1;
-            sd.SampleDesc.Quality = 0;
-            sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            sd.BufferCount = 1;
+            DXGI_SWAP_CHAIN_DESC1 sd =
+            {
+                .Width = width,
+                .Height = height,
+                .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+                .SampleDesc =
+                {
+                    .Count = 1,
+                    .Quality = 0
+                },
+                .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+                .BufferCount = 1,
+                //.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL,
+            };
 
             hr = factory2->CreateSwapChainForHwnd(m_d3dDevice.Get(), hWnd, &sd, nullptr, nullptr, &m_swapChain1);
             if (SUCCEEDED(hr))
@@ -166,19 +176,30 @@ namespace library
         else
         {
             // DirectX 11.0 systems
-            DXGI_SWAP_CHAIN_DESC sd;
-            ZeroMemory(&sd, sizeof(DXGI_SWAP_CHAIN_DESC));
-            sd.BufferCount = 1;
-            sd.BufferDesc.Width = width;
-            sd.BufferDesc.Height = height;
-            sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            sd.BufferDesc.RefreshRate.Numerator = 60;
-            sd.BufferDesc.RefreshRate.Denominator = 1;
-            sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            sd.OutputWindow = hWnd;
-            sd.SampleDesc.Count = 1;
-            sd.SampleDesc.Quality = 0;
-            sd.Windowed = false;
+            DXGI_SWAP_CHAIN_DESC sd
+            {
+                .BufferDesc =
+                {
+                    .Width = width,
+                    .Height = height,
+                    .RefreshRate =
+                    {
+                        .Numerator = 60,
+                        .Denominator = 1
+                    },
+                    .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+                },
+                .SampleDesc =
+                {
+                    .Count = 1,
+                    .Quality = 0,
+                },
+                .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+                .BufferCount = 1,
+                .OutputWindow = hWnd,
+                .Windowed = false,
+                //.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL //QUESTION : Warning 뭐 어떻게 하라고?
+            };
 
             hr = factory->CreateSwapChain(m_d3dDevice.Get(), &sd, m_swapChain.GetAddressOf());
         }
@@ -203,32 +224,37 @@ namespace library
 
         // Setup the viewport
         {
-            D3D11_VIEWPORT vp;
-            ZeroMemory(&vp, sizeof(D3D11_VIEWPORT));
-            vp.Width = (FLOAT)width;
-            vp.Height = (FLOAT)height;
-            vp.MinDepth = 0.0f;
-            vp.MaxDepth = 1.0f;
-            vp.TopLeftX = 0;
-            vp.TopLeftY = 0;
+            D3D11_VIEWPORT vp =
+            {
+                .TopLeftX = 0,
+                .TopLeftY = 0,
+                .Width = (FLOAT)width,
+                .Height = (FLOAT)height,
+                .MinDepth = 0.0f,
+                .MaxDepth = 1.0f
+            };
             m_immediateContext->RSSetViewports(1, &vp);
         }
 
         // Create Depth Stencil View
         {
-            D3D11_TEXTURE2D_DESC descDepth;
-            ZeroMemory(&descDepth, sizeof(D3D11_TEXTURE2D_DESC));
-            descDepth.Width = width;
-            descDepth.Height = height;
-            descDepth.MipLevels = 1;
-            descDepth.ArraySize = 1;
-            descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-            descDepth.SampleDesc.Count = 1;
-            descDepth.SampleDesc.Quality = 0;
-            descDepth.Usage = D3D11_USAGE_DEFAULT;
-            descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-            descDepth.CPUAccessFlags = 0;
-            descDepth.MiscFlags = 0;
+            D3D11_TEXTURE2D_DESC descDepth =
+            {
+                .Width = width,
+                .Height = height,
+                .MipLevels = 1,
+                .ArraySize = 1,
+                .Format = DXGI_FORMAT_D24_UNORM_S8_UINT,
+                .SampleDesc = 
+                {
+                    .Count = 1,
+                    .Quality = 0,
+                },
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_DEPTH_STENCIL,
+                .CPUAccessFlags = 0,
+                .MiscFlags = 0,
+            };
 
             hr = m_d3dDevice->CreateTexture2D(&descDepth, NULL, m_depthStencil.GetAddressOf());
             if (FAILED(hr))
@@ -258,11 +284,15 @@ namespace library
             m_d3dDevice->CreateDepthStencilState(&dsDesc, dss.GetAddressOf());
             m_immediateContext->OMSetDepthStencilState(dss.Get(), 1);*/
 
-            D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
-            ZeroMemory(&descDSV, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
-            descDSV.Format = descDepth.Format;
-            descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-            descDSV.Texture2D.MipSlice = 0;
+            D3D11_DEPTH_STENCIL_VIEW_DESC descDSV =
+            {
+                .Format = descDepth.Format,
+                .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+                .Texture2D =
+                {
+                    .MipSlice = 0
+                }
+            };
 
             hr = m_d3dDevice->CreateDepthStencilView(m_depthStencil.Get(), &descDSV, m_depthStencilView.GetAddressOf());
             if (FAILED(hr))
@@ -271,12 +301,20 @@ namespace library
             m_immediateContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
         }
 
-        //initialize matrices
-        /*XMVECTOR eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
-        XMVECTOR at = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-        XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);*/
-        //TIP : at 방향이 아니라 지점임. up은 방향.
-        //m_view = XMMatrixLookAtLH(eye, at, up);
+        m_camera.Initialize(m_d3dDevice.Get());
+        //Create Projection Buffer
+        D3D11_BUFFER_DESC bd =
+        {
+            .ByteWidth = sizeof(CBChangeOnResize),
+            .Usage = D3D11_USAGE_DEFAULT,
+            .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+            .CPUAccessFlags = 0u,
+            .MiscFlags = 0u,
+            .StructureByteStride = 0u
+        };
+        hr = m_d3dDevice->CreateBuffer(&bd, 0, m_cbChangeOnResize.GetAddressOf());
+        if (FAILED(hr))
+            return hr;
         m_projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<FLOAT>(width) / static_cast<FLOAT>(height), 0.01f, 100.0f);
 
         for (auto m_renderable = begin(m_renderables); m_renderable != end(m_renderables); m_renderable++)
@@ -322,7 +360,7 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::AddVertexShader
 
-      Summary:  Add the vertex shader into the renderer and initialize it
+      Summary:  Add the vertex shader into the renderer
 
       Args:     PCWSTR pszVertexShaderName
                   Key of the vertex shader
@@ -350,7 +388,7 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::AddPixelShader
 
-      Summary:  Add the pixel shader into the renderer and initialize it
+      Summary:  Add the pixel shader into the renderer
 
       Args:     PCWSTR pszPixelShaderName
                   Key of the pixel shader
@@ -436,21 +474,39 @@ namespace library
             m_immediateContext->IASetIndexBuffer(m_renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R32_UINT, 0u);
             m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             
-            ConstantBuffer cb;
-            ZeroMemory(&cb, sizeof(ConstantBuffer));
-            cb.World = m_renderable.second->GetWorldMatrix();
-            cb.View = m_camera.GetView();
+            CBChangeOnCameraMovement cb0 =
+            {
+                .View = m_camera.GetView()
+            };
+
+            CBChangeOnResize cb1 =
+            {
+                .Projection = m_projection
+            };
+
+            CBChangesEveryFrame cb2 =
+            {
+                .World = m_renderable.second->GetWorldMatrix()
+            };
 
             //Transpose
-            cb.World = XMMatrixTranspose(cb.World);
-            cb.View = XMMatrixTranspose(cb.View);
-            cb.Projection = XMMatrixTranspose(m_projection);
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb1.Projection = XMMatrixTranspose(cb1.Projection);
+            cb2.World = XMMatrixTranspose(cb2.World);
+            
+            m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_renderable.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
 
-            m_immediateContext->UpdateSubresource(m_renderable.second->GetConstantBuffer().Get(), 0, nullptr, &cb, 0u, 0u);
-            m_immediateContext->VSSetConstantBuffers(0, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1, 1, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());
 
             m_immediateContext->VSSetShader(m_renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(m_renderable.second->GetPixelShader().Get(), nullptr, 0u);
+
+            m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetTextureResourceView().GetAddressOf());
+            m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetSamplerState().GetAddressOf());
 
             m_immediateContext->DrawIndexed(36, 0u, 0);
         }
@@ -474,11 +530,11 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     HRESULT Renderer::SetVertexShaderOfRenderable(_In_ PCWSTR pszRenderableName, _In_ PCWSTR pszVertexShaderName)
     {
-        if (m_renderables.find(pszRenderableName) == m_renderables.end())
+        if (m_renderables.find(pszRenderableName) != m_renderables.end())
         {
-            if (m_vertexShaders.find(pszVertexShaderName) == m_vertexShaders.end())
+            if (m_vertexShaders.find(pszVertexShaderName) != m_vertexShaders.end())
             {
-                m_renderables.find(pszRenderableName)->second->SetVertexShader(m_vertexShaders.find(pszVertexShaderName)->second);
+                m_renderables[pszRenderableName]->SetVertexShader(m_vertexShaders[pszVertexShaderName]);
                 return S_OK;
             }
             else
@@ -505,9 +561,9 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     HRESULT Renderer::SetPixelShaderOfRenderable(_In_ PCWSTR pszRenderableName, _In_ PCWSTR pszPixelShaderName)
     {
-        if (m_renderables.find(pszRenderableName) == m_renderables.end())
+        if (m_renderables.find(pszRenderableName) != m_renderables.end())
         {
-            if (m_pixelShaders.find(pszPixelShaderName) == m_pixelShaders.end())
+            if (m_pixelShaders.find(pszPixelShaderName) != m_pixelShaders.end())
             {
                 m_renderables.find(pszRenderableName)->second->SetPixelShader(m_pixelShaders.find(pszPixelShaderName)->second);
                 return S_OK;

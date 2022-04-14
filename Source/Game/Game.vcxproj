@@ -93,7 +93,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Cube\BaseCube.cpp" />
-    <ClCompile Include="Cube\CenterCube.cpp" />
+    <ClCompile Include="Cube\Cube.cpp" />
+    <ClCompile Include="Cube\Cube1.cpp" />
     <ClCompile Include="Main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdafx.h</PrecompiledHeaderFile>
@@ -101,7 +102,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Cube\BaseCube.h" />
-    <ClInclude Include="Cube\CenterCube.h" />
+    <ClInclude Include="Cube\Cube.h" />
+    <ClInclude Include="Cube\Cube1.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\PS.hlsl">
