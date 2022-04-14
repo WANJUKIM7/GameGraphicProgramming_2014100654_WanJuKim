@@ -53,53 +53,20 @@ namespace library
         
         //Create VertexBuffer
         {
-            SimpleVertex vertices[] =
-            {
-                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) }, //QUESTION : indexbuffer은 무의미 해지는 것인가?
-                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-                { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-                { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-                { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
-                { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-                { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-            };
-
             D3D11_BUFFER_DESC bd =
             {
-                .ByteWidth = sizeof(SimpleVertex) * 24,
+                .ByteWidth = sizeof(SimpleVertex) * GetNumVertices(),   //Question : 어떻게 BaseCube의 함수를 가져올 수 있지? 포함도 안 하는데..? 자식 걸 가져왔네.
                 .Usage = D3D11_USAGE_DEFAULT,
                 .BindFlags = D3D11_BIND_VERTEX_BUFFER,
-                .CPUAccessFlags = 0,
-                .MiscFlags = 0
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u
             };
 
             D3D11_SUBRESOURCE_DATA initData =
             {
-                .pSysMem = vertices,
-                .SysMemPitch = 0,
-                .SysMemSlicePitch = 0
+                .pSysMem = getVertices(),
+                .SysMemPitch = 0u,
+                .SysMemSlicePitch = 0u
             };
             hr = pDevice->CreateBuffer(&bd, &initData, m_vertexBuffer.GetAddressOf());
 
@@ -109,41 +76,20 @@ namespace library
 
         //Create IndexBuffer
         {
-            UINT indices[] =
-            {
-                0,2,1,
-                0,3,2,
-
-                4,5,6,
-                4,6,7,
-
-                8,10,9,
-                8,11,10,
-
-                12,13,14,
-                12,14,15,
-
-                16,18,17,
-                16,19,18,
-
-                20,21,22,
-                20,22,23,
-            };
-
             D3D11_BUFFER_DESC bd =
             {
-                .ByteWidth = sizeof(UINT) * 36,
+                .ByteWidth = sizeof(WORD) * GetNumIndices(),    //sizeof(WORD) 주의하자...
                 .Usage = D3D11_USAGE_DEFAULT,
                 .BindFlags = D3D11_BIND_INDEX_BUFFER,
-                .CPUAccessFlags = 0,
-                .MiscFlags = 0
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u
             };
 
             D3D11_SUBRESOURCE_DATA initData = 
             {
-                .pSysMem = indices,
-                .SysMemPitch = 0,
-                .SysMemSlicePitch = 0
+                .pSysMem = getIndices(),
+                .SysMemPitch = 0u,
+                .SysMemSlicePitch = 0u
             };
             hr = pDevice->CreateBuffer(&bd, &initData, m_indexBuffer.GetAddressOf());
 
@@ -182,7 +128,7 @@ namespace library
             .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
             .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
             .ComparisonFunc = D3D11_COMPARISON_NEVER,
-            .MinLOD = 0,
+            .MinLOD = 0.0f,
             .MaxLOD = D3D11_FLOAT32_MAX
         };
         hr = pDevice->CreateSamplerState(&sampDesc, m_samplerLinear.GetAddressOf());

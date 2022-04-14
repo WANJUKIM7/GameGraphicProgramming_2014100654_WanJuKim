@@ -1,12 +1,9 @@
 /*+===================================================================
   File:      BASECUBE.H
-
   Summary:   Base cube header file contains declarations of BaseCube
              class used for the lab samples of Game Graphics
              Programming course.
-
   Classes: Cube
-
   � 2022 Kyung Hee University
 ===================================================================+*/
 #pragma once
@@ -18,9 +15,7 @@
 
 /*C+C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C+++C
   Class:    BaseCube
-
   Summary:  Base class for renderable 3d cube object
-
   Methods:  Initialize
               Initializes a basic cube
             Update
@@ -57,38 +52,58 @@ protected:
     const library::SimpleVertex* getVertices() const override;
     const WORD* getIndices() const override;
 
-    //Tip : Designated initializer를 말씀하시는 거라면 c++20으로 설정되어 있는지 확인해주세요. Project Setting -> General -> C++ Language Standard가 ISO C++20 Standard여야 합니다.
-    static constexpr const library::SimpleVertex VERTICES[] =
+    static constexpr const library::SimpleVertex VERTICES[] =   //QUESTION : indexbuffer은 무의미 해지는 것인가?
     {
-        {.Position = DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f) },
-        {.Position = DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f) },
-        {.Position = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f) },
-        {.Position = DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f) },
-        {.Position = DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f) },
-        {.Position = DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f) },
-        {.Position = DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f) },
-        {.Position = DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+
+        {.Position = XMFLOAT3(-1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+        {.Position = XMFLOAT3(1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
+        {.Position = XMFLOAT3(1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+        {.Position = XMFLOAT3(-1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+
+        {.Position = XMFLOAT3(-1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+        {.Position = XMFLOAT3(-1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+
+        {.Position = XMFLOAT3(1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
+
+        {.Position = XMFLOAT3(-1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, -1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+
+        {.Position = XMFLOAT3(-1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, -1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 1.0f) },
+        {.Position = XMFLOAT3(1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f) },
+        {.Position = XMFLOAT3(-1.0f, 1.0f, 1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f) },
     };
-    static constexpr const UINT NUM_VERTICES = 8u;
+    static constexpr const UINT NUM_VERTICES = 24u; //QUESTION : constexpr 쓴 이유. 그리고 static은 
     static constexpr const WORD INDICES[] =
     {
         3,1,0,
         2,1,3,
 
-        0,5,4,
-        1,5,0,
-
-        3,4,7,
-        0,4,3,
-
-        1,6,5,
-        2,6,1,
-
-        2,7,6,
-        3,7,2,
-
         6,4,5,
         7,4,6,
+
+        11,9,8,
+        10,9,11,
+
+        14,12,13,
+        15,12,14,
+
+        19,17,16,
+        18,17,19,
+
+        22,20,21,
+        23,20,22
     };
     static constexpr const UINT NUM_INDICES = 36u;
 };

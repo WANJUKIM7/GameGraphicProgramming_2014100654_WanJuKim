@@ -471,7 +471,7 @@ namespace library
         {
             m_immediateContext->IASetVertexBuffers(0, 1, m_renderable.second->GetVertexBuffer().GetAddressOf(), &stride, &offset);
             m_immediateContext->IASetInputLayout(m_renderable.second->GetVertexLayout().Get());
-            m_immediateContext->IASetIndexBuffer(m_renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R32_UINT, 0u);
+            m_immediateContext->IASetIndexBuffer(m_renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
             m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             
             CBChangeOnCameraMovement cb0 =
