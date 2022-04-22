@@ -41,6 +41,10 @@ namespace library
                     Returns the texture resource view
                   GetSamplerState
                     Returns the sampler state
+                  GetOutputColor
+                    Returns the output color
+                  HasTexture
+                    Returns whether the renderable has texture
                   GetNumVertices
                     Pure virtual function that returns the number of
                     vertices
@@ -56,13 +60,14 @@ namespace library
     {
     public:
         Renderable(_In_ const std::filesystem::path& textureFilePath);
+        Renderable(_In_ const XMFLOAT4& outputColor);
         Renderable(const Renderable& other) = delete;
         Renderable(Renderable&& other) = delete;
         Renderable& operator=(const Renderable& other) = delete;
         Renderable& operator=(Renderable&& other) = delete;
         virtual ~Renderable() = default;
 
-        virtual HRESULT Initialize(_In_ ID3D11Device* pDevice, _In_ ID3D11DeviceContext* pImmediateContext) = 0;    //순수가상함수인데 왜 있냐고? I아니고 i임;;
+        virtual HRESULT Initialize(_In_ ID3D11Device* pDevice, _In_ ID3D11DeviceContext* pImmediateContext) = 0;
         virtual void Update(_In_ FLOAT deltaTime) = 0;
 
         void SetVertexShader(_In_ const std::shared_ptr<VertexShader>& vertexShader);
@@ -77,13 +82,25 @@ namespace library
         const XMMATRIX& GetWorldMatrix() const;
         ComPtr<ID3D11ShaderResourceView>& GetTextureResourceView();
         ComPtr<ID3D11SamplerState>& GetSamplerState();
+        const XMFLOAT4& GetOutputColor() const;
+        BOOL HasTexture() const;
+
+        void RotateX(_In_ FLOAT angle);
+        void RotateY(_In_ FLOAT angle);
+        void RotateZ(_In_ FLOAT angle);
+        void RotateRollPitchYaw(_In_ FLOAT roll, _In_ FLOAT pitch, _In_ FLOAT yaw);
+        void Scale(_In_ FLOAT scaleX, _In_ FLOAT scaleY, _In_ FLOAT scaleZ);
+        void Translate(_In_ const XMVECTOR& offset);
 
         virtual UINT GetNumVertices() const = 0;
         virtual UINT GetNumIndices() const = 0;
     protected:
         const virtual SimpleVertex* getVertices() const = 0;
         virtual const WORD* getIndices() const = 0;
-        HRESULT initialize(_In_ ID3D11Device* pDevice, _In_ ID3D11DeviceContext* pImmediateContext);    //여기 있었네;;
+        HRESULT initialize(
+            _In_ ID3D11Device* pDevice,
+            _In_ ID3D11DeviceContext* pImmediateContext
+        );
 
         ComPtr<ID3D11Buffer> m_vertexBuffer;
         ComPtr<ID3D11Buffer> m_indexBuffer;
@@ -93,6 +110,8 @@ namespace library
         std::shared_ptr<VertexShader> m_vertexShader;
         std::shared_ptr<PixelShader> m_pixelShader;
         std::filesystem::path m_textureFilePath;
+        XMFLOAT4 m_outputColor;
+        BOOL m_bHasTextures;
         XMMATRIX m_world;
     };
 }

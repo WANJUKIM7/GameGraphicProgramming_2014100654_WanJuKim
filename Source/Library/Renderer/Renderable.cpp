@@ -13,7 +13,8 @@ namespace library
 
       Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer,
                  m_textureRV, m_samplerLinear, m_vertexShader,
-                 m_pixelShader, m_textureFilePath, m_world].
+                 m_pixelShader, m_textureFilePath, m_outputColor,
+                 m_world].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     Renderable::Renderable(_In_ const std::filesystem::path& textureFilePath)
         : m_vertexBuffer(nullptr)
@@ -24,6 +25,36 @@ namespace library
         , m_vertexShader(nullptr)
         , m_pixelShader(nullptr)
         , m_textureFilePath(textureFilePath)
+        , m_outputColor(XMFLOAT4())
+        , m_bHasTextures(TRUE)
+        , m_world(XMMatrixIdentity())
+    {
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::Renderable
+
+      Summary:  Constructor
+
+      Args:     const XMFLOAT4* outputColor
+                  Default color of the renderable
+
+      Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer,
+                 m_textureRV, m_samplerLinear, m_vertexShader,
+                 m_pixelShader, m_textureFilePath, m_outputColor,
+                 m_world].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    Renderable::Renderable(_In_ const XMFLOAT4& outputColor)
+        : m_vertexBuffer(nullptr)
+        , m_indexBuffer(nullptr)
+        , m_constantBuffer(nullptr)
+        , m_textureRV(nullptr)
+        , m_samplerLinear(nullptr)
+        , m_vertexShader(nullptr)
+        , m_pixelShader(nullptr)
+        , m_textureFilePath()
+        , m_outputColor(outputColor)
+        , m_bHasTextures(FALSE)
         , m_world(XMMatrixIdentity())
     {
     }
@@ -31,15 +62,15 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::initialize
 
-      Summary:  Initializes the buffers and the world matrix
+      Summary:  Initializes the buffers, texture, and the world matrix
 
       Args:     ID3D11Device* pDevice
                   The Direct3D device to create the buffers
                 ID3D11DeviceContext* pImmediateContext
                   The Direct3D context to set buffers
 
-      Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer, 
-                  m_world].
+      Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer,
+                 m_textureRV, m_samplerLinear, m_world].
 
       Returns:  HRESULT
                   Status code
@@ -99,7 +130,6 @@ namespace library
         
         //Create ConstantBuffer
         {
-            m_world = XMMatrixIdentity();
             //TIP : D3D11_USAGE_DYNAMIC은 메모리 변경 == size 변경일 때 사용하는 거였어. 그냥 수정이 아니라.
             D3D11_BUFFER_DESC bd =
             {
@@ -115,25 +145,28 @@ namespace library
                 return hr;
         }
 
-        // Load the Texture
-        hr = CreateDDSTextureFromFile(pDevice, m_textureFilePath.filename().wstring().c_str(), nullptr, m_textureRV.GetAddressOf());
-        if (FAILED(hr))
-            return hr;
-            
-        // Create the sample state
-        D3D11_SAMPLER_DESC sampDesc =    //TIP : 이런 방법이 desginated initialize. 장점은? 생성할 때 한번에 하기 때문에 효율적. 할당은 하나씩 하나씩 함.
+        // If exists, load the Texture
+        if (m_bHasTextures)
         {
-            .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
-            .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
-            .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
-            .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
-            .ComparisonFunc = D3D11_COMPARISON_NEVER,
-            .MinLOD = 0.0f,
-            .MaxLOD = D3D11_FLOAT32_MAX
-        };
-        hr = pDevice->CreateSamplerState(&sampDesc, m_samplerLinear.GetAddressOf());
-        if (FAILED(hr))
-            return hr;
+            hr = CreateDDSTextureFromFile(pDevice, m_textureFilePath.filename().wstring().c_str(), nullptr, m_textureRV.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+            
+            // Create the sample state
+            D3D11_SAMPLER_DESC sampDesc =    //TIP : 이런 방법이 desginated initialize. 장점은? 생성할 때 한번에 하기 때문에 효율적. 할당은 하나씩 하나씩 함.
+            {
+                .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+                .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+                .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+                .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+                .ComparisonFunc = D3D11_COMPARISON_NEVER,
+                .MinLOD = 0.0f,
+                .MaxLOD = D3D11_FLOAT32_MAX
+            };
+            hr = pDevice->CreateSamplerState(&sampDesc, m_samplerLinear.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+        }
 
         return hr;
     }
@@ -285,5 +318,61 @@ namespace library
     ComPtr<ID3D11SamplerState>& Renderable::GetSamplerState()
     {
         return m_samplerLinear;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::GetOutputColor
+
+      Summary:  Returns the output color
+
+      Returns:  const XMFLOAT4&
+                  The output color
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    const XMFLOAT4& Renderable::GetOutputColor() const
+    {
+        return m_outputColor;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::HasTexture
+
+      Summary:  Returns whether the renderable has texture
+
+      Returns:  BOOL
+                  Whether the renderable has texture
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    BOOL Renderable::HasTexture() const
+    {
+        return m_bHasTextures;
+    }
+
+    void Renderable::RotateX(_In_ FLOAT angle)
+    {
+        m_world *= XMMatrixRotationX(angle);
+    }
+
+    void Renderable::RotateY(_In_ FLOAT angle)
+    {
+        m_world *= XMMatrixRotationY(angle);
+    }
+
+    void Renderable::RotateZ(_In_ FLOAT angle)
+    {
+        m_world *= XMMatrixRotationZ(angle);
+    }
+
+    void Renderable::RotateRollPitchYaw(_In_ FLOAT roll, _In_ FLOAT pitch, _In_ FLOAT yaw)
+    {
+        m_world *= XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+    }
+
+    void Renderable::Scale(_In_ FLOAT scaleX, _In_ FLOAT scaleY, _In_ FLOAT scaleZ)
+    {
+        m_world *= XMMatrixScaling(scaleX, scaleY, scaleZ);
+    }
+
+    void Renderable::Translate(_In_ const XMVECTOR& offset)
+    {
+        m_world *= XMMatrixTranslationFromVector(offset);
     }
 }

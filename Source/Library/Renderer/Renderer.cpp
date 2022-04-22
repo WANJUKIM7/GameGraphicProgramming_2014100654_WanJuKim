@@ -14,7 +14,6 @@ namespace library
                  m_projection, m_renderables, m_vertexShaders,
                  m_pixelShaders].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-
    //TIP : 이니셜라이저랑 할당은 매우 다르다. 초기화를 해줘야 처음부터 '유효한 개체'라고 할 수 있다. 무조건 필요하다 그런 건가?
     Renderer::Renderer()
         : m_driverType(D3D_DRIVER_TYPE_NULL)
@@ -29,10 +28,11 @@ namespace library
         , m_depthStencil(nullptr)
         , m_depthStencilView(nullptr)
         , m_cbChangeOnResize(nullptr)
-        , m_padding()
-        , m_camera(XMVectorSet(0.0f,0.0f,-5.0f,0.0f))
+        , m_cbLights(nullptr)
+        , m_camera(XMVectorSet(0.0f,0.0f,-10.0f,0.0f))
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
+        , m_aPointLights()
         , m_vertexShaders() //TIP : default는 이런 식으로 하는 거야~.  default가 있다는 거 자체가 default로 생성해도 괜찮다는 거. 없으면 그렇게 하면 안 된다는 거. 이게 바로 암묵적인 룰?
         , m_pixelShaders()
     {
@@ -49,7 +49,7 @@ namespace library
       Modifies: [m_d3dDevice, m_featureLevel, m_immediateContext,
                  m_d3dDevice1, m_immediateContext1, m_swapChain1,
                  m_swapChain, m_renderTargetView, m_cbChangeOnResize,
-                 m_projection, m_camera, m_vertexShaders,
+                 m_projection, m_cbLights, m_camera, m_vertexShaders,
                  m_pixelShaders, m_renderables].
 
       Returns:  HRESULT
@@ -75,7 +75,7 @@ namespace library
         ClientToScreen(hWnd, &p2);
 
         rc.left = p1.x;
-        rc.top = p1.y - 25; //QUESTION : ^^;;
+        rc.top = p1.y - 25; //Question : GetWindowRect()라는 함수는 윈도우 창 크기를 가져오면 창 부분을 깔끔하게 가져올 수 있다.
         rc.right = p2.x;
         rc.bottom = p2.y;
 
@@ -260,30 +260,6 @@ namespace library
             if (FAILED(hr))
                 return hr;
 
-            /*D3D11_DEPTH_STENCIL_DESC dsDesc;
-            ZeroMemory(&dsDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
-            dsDesc.DepthEnable = true;
-            dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-            dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-            dsDesc.StencilEnable = true;
-            dsDesc.StencilReadMask = 0xFF;
-            dsDesc.StencilWriteMask = 0xFF;
-
-            dsDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-            dsDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-            dsDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-            dsDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-            dsDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-            dsDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-            dsDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-            dsDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-            ComPtr<ID3D11DepthStencilState> dss = nullptr;
-            m_d3dDevice->CreateDepthStencilState(&dsDesc, dss.GetAddressOf());
-            m_immediateContext->OMSetDepthStencilState(dss.Get(), 1);*/
-
             D3D11_DEPTH_STENCIL_VIEW_DESC descDSV =
             {
                 .Format = descDepth.Format,
@@ -301,22 +277,43 @@ namespace library
             m_immediateContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
         }
 
+        //Create View Buffer
         m_camera.Initialize(m_d3dDevice.Get());
-        //Create Projection Buffer
-        D3D11_BUFFER_DESC bd =
-        {
-            .ByteWidth = sizeof(CBChangeOnResize),
-            .Usage = D3D11_USAGE_DEFAULT,
-            .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
-            .CPUAccessFlags = 0u,
-            .MiscFlags = 0u,
-            .StructureByteStride = 0u
-        };
-        hr = m_d3dDevice->CreateBuffer(&bd, 0, m_cbChangeOnResize.GetAddressOf());
-        if (FAILED(hr))
-            return hr;
-        m_projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<FLOAT>(width) / static_cast<FLOAT>(height), 0.01f, 100.0f);
 
+        //Create Projection Buffer
+        {
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(CBChangeOnResize),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u
+            };
+            hr = m_d3dDevice->CreateBuffer(&bd, 0, m_cbChangeOnResize.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+            m_projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<FLOAT>(width) / static_cast<FLOAT>(height), 0.01f, 100.0f);
+        }
+
+        //Creat CbLights
+        {
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(CBLights),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u
+            };
+            hr = m_d3dDevice->CreateBuffer(&bd, 0, m_cbLights.GetAddressOf());
+            if (FAILED(hr))
+                return hr;
+        }
+
+        //Initialize m_vertexShaders, m_pixelShaders, m_renderables
         for (auto m_renderable = begin(m_renderables); m_renderable != end(m_renderables); m_renderable++)
             m_renderable->second->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
 
@@ -355,6 +352,32 @@ namespace library
         }
         else
             return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::AddPointLight
+
+      Summary:  Add a point light
+
+      Args:     size_t index
+                  Index of the point light
+                const std::shared_ptr<PointLight>& pointLight
+                  Shared pointer to the point light object
+
+      Modifies: [m_aPointLights].
+
+      Returns:  HRESULT
+                  Status code.
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT Renderer::AddPointLight(_In_ size_t index, _In_ const std::shared_ptr<PointLight>& pointLight)
+    {
+        if (index >= NUM_LIGHTS)
+            return E_NOTIMPL;
+        else
+        {
+            m_aPointLights[index] = pointLight;
+            return S_OK;
+        }
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -448,6 +471,8 @@ namespace library
     void Renderer::Update(_In_ FLOAT deltaTime)
     {
         m_camera.Update(deltaTime);
+        for (int i = 0; i < NUM_LIGHTS; i++)
+            m_aPointLights[i].get()->Update(deltaTime);
         for (auto m_renderable : m_renderables)
         {
             m_renderable.second->Update(deltaTime);
@@ -465,6 +490,7 @@ namespace library
         m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);    
 
+        m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         UINT stride = sizeof(SimpleVertex);
         UINT offset = 0;
         for (auto m_renderable : m_renderables)
@@ -472,13 +498,12 @@ namespace library
             m_immediateContext->IASetVertexBuffers(0, 1, m_renderable.second->GetVertexBuffer().GetAddressOf(), &stride, &offset);
             m_immediateContext->IASetInputLayout(m_renderable.second->GetVertexLayout().Get());
             m_immediateContext->IASetIndexBuffer(m_renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
-            m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             
             CBChangeOnCameraMovement cb0 =
             {
-                .View = m_camera.GetView()
+                .View = m_camera.GetView(),
             };
-
+            XMStoreFloat4(&cb0.CameraPosition, m_camera.GetEye());
             CBChangeOnResize cb1 =
             {
                 .Projection = m_projection
@@ -486,9 +511,24 @@ namespace library
 
             CBChangesEveryFrame cb2 =
             {
-                .World = m_renderable.second->GetWorldMatrix()
+                .World = m_renderable.second->GetWorldMatrix(),
+                .OutputColor = m_renderable.second->GetOutputColor()
             };
-
+            
+            CBLights cb3 =
+            {
+                .LightPositions =
+                {
+                    m_aPointLights[0].get()->GetPosition(), //TIP : 얻어 걸리기;;
+                    m_aPointLights[1].get()->GetPosition()
+                },
+                .LightColors = 
+                {
+                    m_aPointLights[0].get()->GetColor(),
+                    m_aPointLights[1].get()->GetColor()    //벡터는 전치 필요 X.
+                }
+            };
+            
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
@@ -497,17 +537,25 @@ namespace library
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_renderable.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
-
+            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            
             m_immediateContext->VSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
             m_immediateContext->VSSetConstantBuffers(1, 1, m_cbChangeOnResize.GetAddressOf());
             m_immediateContext->VSSetConstantBuffers(2, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
+            m_immediateContext->PSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
 
             m_immediateContext->VSSetShader(m_renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(m_renderable.second->GetPixelShader().Get(), nullptr, 0u);
 
-            m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetTextureResourceView().GetAddressOf());
-            m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetSamplerState().GetAddressOf());
-
+            if (m_renderable.second->HasTexture())
+            {
+                m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetTextureResourceView().GetAddressOf());
+                m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetSamplerState().GetAddressOf());
+            }
             m_immediateContext->DrawIndexed(36, 0u, 0);
         }
         m_swapChain->Present(0, 0);
@@ -574,7 +622,7 @@ namespace library
         else
             return E_FAIL;
     }
-
+    
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::GetDriverType
 

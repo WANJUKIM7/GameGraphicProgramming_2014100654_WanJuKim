@@ -54,4 +54,7 @@ QUESTION : cpp들을 library 안에다가 하는 이유는 무엇인가?
 4.13(수)
 QUESTION : 왜 이렇게 객체가 많은 건가? window, renderer, game 등등... 객체가 많을 수록 좋은 건가? 이게 객체화 프로그래밍?
 QUESITON : 추가 종속성, 링커 이런 거 다 아냐?
+4.19(화)
+QUESTION : return E_NOTIMPL; 이것보다 return MessageBox 쓰는 게 낫지 않나? 전자는 하나하나 다 살펴봐야잖아.
 */
+
