@@ -56,5 +56,7 @@ QUESTION : 왜 이렇게 객체가 많은 건가? window, renderer, game 등등... 객체가 많�
 QUESITON : 추가 종속성, 링커 이런 거 다 아냐?
 4.19(화)
 QUESTION : return E_NOTIMPL; 이것보다 return MessageBox 쓰는 게 낫지 않나? 전자는 하나하나 다 살펴봐야잖아.
+4.29(금)
+QUESTION : _In_을 굳이 쓰는 이유는? const로도 충분하지 않나? _Inout_이것도 마찬가지. & 쓰면 충분히 알 수 있지 않나?
 */
 

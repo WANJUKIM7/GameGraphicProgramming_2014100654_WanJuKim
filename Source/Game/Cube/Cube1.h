@@ -30,7 +30,7 @@ C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C-C*/
 class Cube1 : public BaseCube
 {
 public:
-    Cube1(const std::filesystem::path& textureFilePath);
+    Cube1(const std::filesystem::path& textureFilePath) = delete;   //QUESTION : 없애도 ㄱㅊ?
     Cube1(const Cube1& other) = delete;
     Cube1(Cube1&& other) = delete;
     Cube1& operator=(const Cube1& other) = delete;

@@ -1,17 +1,17 @@
 #include "Cube/BaseCube.h"
 
-/*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
-  Method:   BaseCube::BaseCube
-
-  Summary:  Constructor
-
-  Args:     const std::filesystem::path& textureFilePath
-              Path to the texture to use
-M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-BaseCube::BaseCube(_In_ const std::filesystem::path& textureFilePath)
-    : Renderable(textureFilePath)
-{
-}
+///*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+//  Method:   BaseCube::BaseCube
+//
+//  Summary:  Constructor
+//
+//  Args:     const std::filesystem::path& textureFilePath
+//              Path to the texture to use
+//M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+//BaseCube::BaseCube(_In_ const std::filesystem::path& textureFilePath)
+//    : Renderable(textureFilePath)
+//{
+//}//QUESTION : Renderable 생성자 없앴는데 지워도 되나?
 
 BaseCube::BaseCube(_In_ const XMFLOAT4& outputColor)
     : Renderable(outputColor)

@@ -164,7 +164,7 @@ namespace library
                 },
                 .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
                 .BufferCount = 1,
-                //.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL,
+                //.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
             };
 
             hr = factory2->CreateSwapChainForHwnd(m_d3dDevice.Get(), hWnd, &sd, nullptr, nullptr, &m_swapChain1);
@@ -198,7 +198,7 @@ namespace library
                 .BufferCount = 1,
                 .OutputWindow = hWnd,
                 .Windowed = false,
-                //.SwapEffect = DXGI_SWAP_EFFECT_SEQUENTIAL //QUESTION : Warning 뭐 어떻게 하라고?
+                //.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL //QUESTION : Warning 뭐 어떻게 하라고?
             };
 
             hr = factory->CreateSwapChain(m_d3dDevice.Get(), &sd, m_swapChain.GetAddressOf());
@@ -471,7 +471,7 @@ namespace library
     void Renderer::Update(_In_ FLOAT deltaTime)
     {
         m_camera.Update(deltaTime);
-        for (int i = 0; i < NUM_LIGHTS; i++)
+        for (int i = 0; i < NUM_LIGHTS; i++)//QUESTION : UINT로 바꾸기.
             m_aPointLights[i].get()->Update(deltaTime);
         for (auto m_renderable : m_renderables)
         {
@@ -551,11 +551,11 @@ namespace library
             m_immediateContext->VSSetShader(m_renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(m_renderable.second->GetPixelShader().Get(), nullptr, 0u);
 
-            if (m_renderable.second->HasTexture())
+            /*if (m_renderable.second->HasTexture())
             {
                 m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetTextureResourceView().GetAddressOf());
                 m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetSamplerState().GetAddressOf());
-            }
+            }*/
             m_immediateContext->DrawIndexed(36, 0u, 0);
         }
         m_swapChain->Present(0, 0);

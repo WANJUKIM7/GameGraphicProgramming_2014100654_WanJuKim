@@ -24,7 +24,7 @@ C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C-C*/
 class BaseCube : public library::Renderable
 {
 public:
-    BaseCube(_In_ const std::filesystem::path& textureFilePath);
+    //BaseCube(_In_ const std::filesystem::path& textureFilePath) = delete;   //QUESTION : 없애도 되는 건가?
     BaseCube(_In_ const XMFLOAT4& outputColor);
     BaseCube(const BaseCube& other) = delete;
     BaseCube(BaseCube&& other) = delete;
@@ -41,7 +41,7 @@ protected:
     const library::SimpleVertex* getVertices() const override;
     const WORD* getIndices() const override;
 
-    static constexpr const library::SimpleVertex VERTICES[] =//QUESTION : indexbuffer은 무의미 해지는 것인가?
+    static constexpr const library::SimpleVertex VERTICES[] =//Question : indexbuffer은 무의미 해지는 것인가? → indices는 36개, vertices는 24개니까 12개 절약. 절약 효율이 낮아진 건 맞음 ㅇㅇ.
     {
         {.Position = XMFLOAT3(-1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(1.0f, 0.0f), .Normal = XMFLOAT3(0.0f, 1.0f, 0.0f) },
         {.Position = XMFLOAT3(1.0f, 1.0f, -1.0f), .TexCoord = XMFLOAT2(0.0f, 0.0f), .Normal = XMFLOAT3(0.0f, 1.0f, 0.0f) },
