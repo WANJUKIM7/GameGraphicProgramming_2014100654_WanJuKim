@@ -21,7 +21,7 @@ namespace library
         , m_filePath(filePath)
         , m_aVertices()
         , m_aIndices()
-        , m_padding()//QUESTION : 확인해보자.
+        , m_padding()
     {
     }
 
@@ -46,11 +46,12 @@ namespace library
 
         Assimp::Importer importer;
 
+        //굉장히 오래 걸리는 구문이다. 읽을 게 많다면.
         const aiScene* pScene = importer.ReadFile(
             m_filePath.string().c_str(),
             ASSIMP_LOAD_FLAGS
             );
-
+        
         if (pScene)
         {
             hr = initFromScene(pDevice, pImmediateContext, pScene, m_filePath);
@@ -122,10 +123,10 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Model::countVerticesAndIndices(_Inout_ UINT& uOutNumVertices, _Inout_ UINT& uOutNumIndices, _In_ const aiScene* pScene)
     {
-        for (UINT i = 0u; i < m_aMeshes.size(); i++)
+        for (UINT i = 0u; i < m_aMeshes.size(); ++i)
         {
             m_aMeshes[i].uMaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
-            m_aMeshes[i].uNumIndices = pScene->mMeshes[i]->mNumFaces * 3;
+            m_aMeshes[i].uNumIndices = pScene->mMeshes[i]->mNumFaces * 3u;
             m_aMeshes[i].uBaseVertex = uOutNumVertices;
             m_aMeshes[i].uBaseIndex = uOutNumIndices;
 
@@ -170,7 +171,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Model::initAllMeshes(_In_ const aiScene* pScene)
     {
-        for (UINT i = 0u; i < m_aMeshes.size(); ++i)    //QUESTION : 0번은 없다는 거야?
+        for (UINT i = 0; i < m_aMeshes.size(); ++i)
         {
             const aiMesh* pMesh = pScene->mMeshes[i];
             initSingleMesh(pMesh);
@@ -202,7 +203,7 @@ namespace library
     )
     {
         m_aMeshes.resize(pScene->mNumMeshes);
-        m_aMaterials.resize(pScene->mNumMaterials);
+        m_aMaterials.resize(pScene->mNumMaterials); //mNumMaterials은 .mtl에 Material Count + 1이네.
 
         UINT numVertices = 0u;
         UINT numIndices = 0u;
@@ -212,11 +213,11 @@ namespace library
         initAllMeshes(pScene);
         HRESULT hr = initMaterials(pDevice, pImmediateContext, pScene, filePath);
         if (FAILED(hr))
-            return E_NOTIMPL;
+            return hr;
 
         hr = initialize(pDevice, pImmediateContext);
         if (FAILED(hr))
-            return E_NOTIMPL;
+            return hr;
 
         return S_OK;
     }
@@ -246,18 +247,18 @@ namespace library
     )
     {
         HRESULT hr = S_OK;
-
+        
         // Extract the directory part from the file name
         std::filesystem::path parentDirectory = filePath.parent_path();
 
         // Initialize the materials
-        for (UINT i = 0u; i < pScene->mNumMaterials; ++i)
+        for (UINT i = 1u; i < pScene->mNumMaterials; ++i)   //Question : 0번은 없는 거야? → 전위연산자 후위연산자 순서 차이가 없네? 근데 전위가 좀 더 빠르다고 하네.
         {
             const aiMaterial* pMaterial = pScene->mMaterials[i];
 
             loadTextures(pDevice, pImmediateContext, parentDirectory, pMaterial, i);
         }
-
+        
         return hr;
     }
 
@@ -271,9 +272,26 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Model::initSingleMesh(_In_ const aiMesh* pMesh)
     {
-        for (UINT i = 0u; i < pMesh->mNumVertices; i++)
+        //QUESTION : (이거 알면 사흘 절약) 이 순서를 의도했다고 보기엔 매우 ...
+        for (UINT i = 0u; i < pMesh->mNumFaces; ++i)
         {
-            const aiVector3D zero3d(0.0f, 0.0f, 0.0f);
+            const aiFace& face = pMesh->mFaces[i];
+            assert(face.mNumIndices == 3u);
+            WORD aIndices[3] =
+            {
+                static_cast<WORD>(face.mIndices[0]) + m_aVertices.size(),
+                static_cast<WORD>(face.mIndices[1]) + m_aVertices.size(),
+                static_cast<WORD>(face.mIndices[2]) + m_aVertices.size(),
+            };
+            m_aIndices.push_back(aIndices[0]);
+            m_aIndices.push_back(aIndices[1]);
+            m_aIndices.push_back(aIndices[2]);
+        }
+
+        const aiVector3D zero3d(0.0f, 0.0f, 0.0f);
+        
+        for (UINT i = 0u; i < pMesh->mNumVertices; ++i)
+        {
             const aiVector3D& position = pMesh->mVertices[i];
             const aiVector3D& normal = pMesh->mNormals[i];
             const aiVector3D& texCoord = pMesh->HasTextureCoords(0u) ?
@@ -285,19 +303,8 @@ namespace library
                 .Normal = XMFLOAT3(normal.x, normal.y, normal.z)
             };
             m_aVertices.push_back(vertex);
-
-            const aiFace& face = pMesh->mFaces[i];
-            assert(face.mNumIndices == 3u);
-            WORD aIndices[3] =
-            {
-                static_cast<WORD>(face.mIndices[0]),
-                static_cast<WORD>(face.mIndices[1]),
-                static_cast<WORD>(face.mIndices[2]),
-            };
-            m_aIndices.push_back(aIndices[0]); 
-            m_aIndices.push_back(aIndices[1]); 
-            m_aIndices.push_back(aIndices[2]); 
         }
+        
     }
 
     void Model::loadColors(_In_ const aiMaterial* pMaterial, _In_ UINT uIndex)
@@ -331,7 +338,7 @@ namespace library
     {
         HRESULT hr = S_OK;
         m_aMaterials[uIndex].pDiffuse = nullptr;
-
+        
         if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
         {
             aiString aiPath;
@@ -484,5 +491,5 @@ namespace library
     {
         m_aVertices.reserve(uNumVertices);
         m_aIndices.reserve(uNumIndices);
-    }
+    }   
 }

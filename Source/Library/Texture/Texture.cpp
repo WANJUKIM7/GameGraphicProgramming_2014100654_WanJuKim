@@ -38,8 +38,30 @@ namespace library
         if (pDevice == nullptr || pImmediateContext == nullptr)
             return E_NOTIMPL;
 
+        HRESULT hr = CreateWICTextureFromFile(
+            pDevice,
+            pImmediateContext,
+            m_filePath.c_str(),
+            nullptr,
+            m_textureRV.GetAddressOf());
+        if (FAILED(hr))
+            return hr;
+        
+        D3D11_SAMPLER_DESC sampDesc =    //TIP : 이런 방법이 desginated initialize. 장점은? 생성할 때 한번에 하기 때문에 효율적. 할당은 하나씩 하나씩 함.
+        {
+            .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+            .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+            .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+            .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+            .ComparisonFunc = D3D11_COMPARISON_NEVER,
+            .MinLOD = 0.0f,
+            .MaxLOD = D3D11_FLOAT32_MAX
+        };
+        hr = pDevice->CreateSamplerState(&sampDesc, m_samplerLinear.GetAddressOf());
+        if (FAILED(hr))
+            return hr;
 
-        return E_NOTIMPL;
+        return S_OK;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M

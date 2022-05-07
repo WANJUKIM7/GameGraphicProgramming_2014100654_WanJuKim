@@ -18,7 +18,7 @@
 class RotatingCube : public BaseCube
 {
 public:
-    RotatingCube(const std::filesystem::path& textureFilePath) = delete; //QUESTION : 없애도 ㄱㅊ?
+    RotatingCube(const std::filesystem::path& textureFilePath) = delete;
     RotatingCube(const XMFLOAT4& outputColor);
     RotatingCube(const RotatingCube& other) = delete;
     RotatingCube(RotatingCube&& other) = delete;

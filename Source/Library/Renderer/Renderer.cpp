@@ -471,7 +471,7 @@ namespace library
     void Renderer::Update(_In_ FLOAT deltaTime)
     {
         m_camera.Update(deltaTime);
-        for (int i = 0; i < NUM_LIGHTS; i++)//QUESTION : UINT로 바꾸기.
+        for (UINT i = 0; i < NUM_LIGHTS; ++i)
             m_aPointLights[i].get()->Update(deltaTime);
         for (auto m_renderable : m_renderables)
         {
@@ -489,8 +489,8 @@ namespace library
         //Draw ~ Present 사이에만 없으면 되나 봄.
         m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);    
-
         m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
         UINT stride = sizeof(SimpleVertex);
         UINT offset = 0;
         for (auto m_renderable : m_renderables)
@@ -551,12 +551,17 @@ namespace library
             m_immediateContext->VSSetShader(m_renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(m_renderable.second->GetPixelShader().Get(), nullptr, 0u);
 
-            /*if (m_renderable.second->HasTexture())
+            if (m_renderable.second->HasTexture())
             {
-                m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetTextureResourceView().GetAddressOf());
-                m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetSamplerState().GetAddressOf());
-            }*/
-            m_immediateContext->DrawIndexed(36, 0u, 0);
+                for (UINT i = 0; i < m_renderable.second->GetNumMaterials(); ++i)
+                {
+                    m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetMaterial(i).pDiffuse->GetTextureResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetMaterial(i).pDiffuse->GetSamplerState().GetAddressOf());
+                    //m_immediateContext->DrawIndexed(m_renderable.second->GetMesh(i).uNumIndices, m_renderable.second->GetMesh(i).uBaseIndex, m_renderable.second->GetMesh(i).uBaseVertex);
+                }
+            }
+
+            m_immediateContext->DrawIndexed(m_renderable.second->GetNumIndices(), 0u, 0);
         }
         m_swapChain->Present(0, 0);
     }

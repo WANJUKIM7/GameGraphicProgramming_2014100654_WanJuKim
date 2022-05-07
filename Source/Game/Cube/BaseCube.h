@@ -24,7 +24,7 @@ C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C---C-C*/
 class BaseCube : public library::Renderable
 {
 public:
-    //BaseCube(_In_ const std::filesystem::path& textureFilePath) = delete;   //QUESTION : 없애도 되는 건가?
+    BaseCube(_In_ const std::filesystem::path& textureFilePath) = delete;
     BaseCube(_In_ const XMFLOAT4& outputColor);
     BaseCube(const BaseCube& other) = delete;
     BaseCube(BaseCube&& other) = delete;

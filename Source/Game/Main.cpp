@@ -66,13 +66,36 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     {
         return 0;
     }
-    
-    /*--------------------------------------------------------------------
-      TODO: Add a model and its vertex/pixel shader (remove the comment)
-    --------------------------------------------------------------------*/
 
-    std::shared_ptr<library::Model> model = std::make_shared<library::Model>(L"IronMan.obj");
+    // Model
+    std::shared_ptr<library::VertexShader> modelVertexShader = std::make_shared<library::VertexShader>(L"Shaders/PhongShaders.fxh", "VSPhong", "vs_5_0");
+    if (FAILED(game->GetRenderer()->AddVertexShader(L"ModelShader", modelVertexShader)))
+    {
+        return 0;
+    }
+
+    // Model
+    std::shared_ptr<library::PixelShader> modelPixelShader = std::make_shared<library::PixelShader>(L"Shaders/PhongShaders.fxh", "PSPhong", "ps_5_0");
+    if (FAILED(game->GetRenderer()->AddPixelShader(L"ModelShader", modelPixelShader)))
+    {
+        return 0;
+    }
     
+    std::shared_ptr<library::Model> model = std::make_shared<library::Model>(L"nanosuit/nanosuit.obj");
+    if (FAILED(game->GetRenderer()->AddRenderable(L"model", model)))
+    {
+        return 0;
+    }
+    
+    if (FAILED(game->GetRenderer()->SetVertexShaderOfRenderable(L"model", L"ModelShader")))
+    {
+        return 0;
+    }
+    if (FAILED(game->GetRenderer()->SetPixelShaderOfRenderable(L"model", L"ModelShader")))
+    {
+        return 0;
+    }
+
     XMFLOAT4 color;
     XMStoreFloat4(&color, Colors::White);
     

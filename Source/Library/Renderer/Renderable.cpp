@@ -25,7 +25,7 @@ namespace library
         , m_vertexShader(nullptr)
         , m_pixelShader(nullptr)
         , m_outputColor(outputColor)
-        , m_padding()   //QUESTION : 배열 초기화?
+        , m_padding()
         , m_world(XMMatrixIdentity())
     {
     }
@@ -33,7 +33,7 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::initialize
 
-      Summary:  Initializes the buffers, texture, and the world matrix
+      Summary:  Initializes the buffers, and the world matrix
 
       Args:     ID3D11Device* pDevice
                   The Direct3D device to create the buffers
@@ -51,7 +51,7 @@ namespace library
             return E_FAIL;
 
         HRESULT hr = S_OK;
-        
+
         //Create VertexBuffer
         {
             D3D11_BUFFER_DESC bd =
@@ -264,8 +264,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     BOOL Renderable::HasTexture() const
     {
-        //return m_bHasTextures; QUESTION : hastexture 어디?
-        return false;
+        return m_aMaterials.size() > 0 ? true : false;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -419,6 +418,11 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     UINT Renderable::GetNumMaterials() const
     {
-        return static_cast<UINT>(m_aMaterials.size());  //QUESTION : static_cast<UINT>랑 (UINT)의 차이는?
+        //Question : static_cast<UINT>가 (UINT)에 비해서 장점은?
+        //1. static_cast<>는 컴파일 에러로 알 수 있음.(바로 알 수 있다는 뜻.) ()는 런타임 에러임.(빌드를 해야 알 수 있음.)
+        //2. dynamic_cast, const_cast, reinterpret_cast 등등 직관적 확인 가능. QUESTION : 각각 역할은?
+        //3. 포인터 형변환이 안됨. (안되는 게 맞는 거.) feat. (QUESTION) : 업다운 캐스팅.
+        //4. ()보다 편하게 읽기 가능. (색칠...)
+        return static_cast<UINT>(m_aMaterials.size());  
     }
 }
