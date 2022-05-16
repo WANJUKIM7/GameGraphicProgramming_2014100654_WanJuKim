@@ -57,5 +57,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PhongShaders.fxh" />
+    <None Include="Shaders\VoxelShaders.fxh" />
   </ItemGroup>
 </Project>

@@ -52,7 +52,7 @@ namespace library
 
         HRESULT hr = S_OK;
 
-        //Create VertexBuffer
+        // Create VertexBuffer
         {
             D3D11_BUFFER_DESC bd =
             {
@@ -75,7 +75,7 @@ namespace library
                 return hr;
         }
 
-        //Create IndexBuffer
+        // Create IndexBuffer
         {
             D3D11_BUFFER_DESC bd =
             {
@@ -98,9 +98,9 @@ namespace library
                 return hr;
         }
         
-        //Create ConstantBuffer
+        // Create ConstantBuffer
         {
-            //TIP : D3D11_USAGE_DYNAMIC은 메모리 변경 == size 변경일 때 사용하는 거였어. 그냥 수정이 아니라.
+            // TIP : D3D11_USAGE_DYNAMIC은 메모리 변경 == size 변경일 때 사용하는 거였어. 그냥 수정이 아니라.
             D3D11_BUFFER_DESC bd =
             {
                 .ByteWidth = sizeof(CBChangesEveryFrame),
