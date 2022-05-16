@@ -29,12 +29,14 @@ namespace library
         , m_depthStencilView(nullptr)
         , m_cbChangeOnResize(nullptr)
         , m_cbLights(nullptr)
+        , m_pszMainSceneName(L"")
         , m_camera(XMVectorSet(0.0f,0.0f,-10.0f,0.0f))
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
         , m_aPointLights()
         , m_vertexShaders() //TIP : default는 이런 식으로 하는 거야~.  default가 있다는 거 자체가 default로 생성해도 괜찮다는 거. 없으면 그렇게 하면 안 된다는 거. 이게 바로 암묵적인 룰?
-        , m_pixelShaders()
+        , m_pixelShaders(std::unordered_map<std::wstring, std::shared_ptr<PixelShader>>())  //이렇게 초기화 하는 사람도 있는데?
+        , m_scenes()
     {
     }
 
@@ -313,7 +315,7 @@ namespace library
                 return hr;
         }
 
-        //Initialize m_vertexShaders, m_pixelShaders, m_renderables
+        //Initialize m_vertexShaders, m_pixelShaders, m_renderables, m_scenes
         for (auto m_renderable = begin(m_renderables); m_renderable != end(m_renderables); m_renderable++)
             m_renderable->second->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
 
@@ -323,6 +325,9 @@ namespace library
         for (auto m_pixelShader = begin(m_pixelShaders); m_pixelShader != end(m_pixelShaders); m_pixelShader++)
             m_pixelShader->second->Initialize(m_d3dDevice.Get());
         
+        for (auto m_scene = begin(m_scenes); m_scene != end(m_scenes); m_scene++)
+            m_scene->second->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
+
         return hr;
     }
 
@@ -437,6 +442,51 @@ namespace library
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::AddScene
+
+      Summary:  Add a scene
+
+      Args:     PCWSTR pszSceneName
+                  Key of a scene
+                const std::filesystem::path& sceneFilePath
+                  File path to initialize a scene
+
+      Modifies: [m_scenes].
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT library::Renderer::AddScene(_In_ PCWSTR pszSceneName, const std::filesystem::path& sceneFilePath)
+    {
+        if (m_scenes.find(pszSceneName) == m_scenes.end())
+        {
+            m_scenes[pszSceneName] = std::make_shared<library::Scene>(sceneFilePath);
+            return S_OK;
+        }
+        else
+            return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetMainScene
+
+      Summary:  Set the main scene
+
+      Args:     PCWSTR pszSceneName
+                  Name of the scene to set as the main scene
+
+      Modifies: [m_pszMainSceneName].
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT library::Renderer::SetMainScene(_In_ PCWSTR pszSceneName)
+    {
+        m_pszMainSceneName = pszSceneName;  //QUESTION : 실패할 이유가 있나? 왜 HRESULT?
+        return S_OK;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::HandleInput
 
       Summary:  Add the pixel shader into the renderer and initialize it
@@ -491,11 +541,15 @@ namespace library
         m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);    
         m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        UINT stride = sizeof(SimpleVertex);
-        UINT offset = 0;
+        UINT stride[2] =
+        {
+            sizeof(SimpleVertex),
+            sizeof(InstanceData)
+        };
+        UINT offset[2] = { 0 };
         for (auto m_renderable : m_renderables)
         {
-            m_immediateContext->IASetVertexBuffers(0, 1, m_renderable.second->GetVertexBuffer().GetAddressOf(), &stride, &offset);
+            m_immediateContext->IASetVertexBuffers(0, 1, m_renderable.second->GetVertexBuffer().GetAddressOf(), &stride[0], &offset[0]);
             m_immediateContext->IASetInputLayout(m_renderable.second->GetVertexLayout().Get());
             m_immediateContext->IASetIndexBuffer(m_renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
             
@@ -555,14 +609,85 @@ namespace library
             {
                 for (UINT i = 0; i < m_renderable.second->GetNumMaterials(); ++i)
                 {
-                    m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetMaterial(i).pDiffuse->GetTextureResourceView().GetAddressOf());
-                    m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetMaterial(i).pDiffuse->GetSamplerState().GetAddressOf());
-                    //m_immediateContext->DrawIndexed(m_renderable.second->GetMesh(i).uNumIndices, m_renderable.second->GetMesh(i).uBaseIndex, m_renderable.second->GetMesh(i).uBaseVertex);
+                    UINT materialIndex = m_renderable.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
+                    m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetMaterial(materialIndex).pDiffuse->GetTextureResourceView().GetAddressOf());  //Question : 이 부분 관해서 FXH 좀 봐야할듯. → FBX랑 관련 없었다. DrawIndexed...
+                    m_immediateContext->PSSetSamplers(0, 1, m_renderable.second->GetMaterial(materialIndex).pDiffuse->GetSamplerState().GetAddressOf());
+                    m_immediateContext->DrawIndexed(m_renderable.second->GetMesh(i).uNumIndices, m_renderable.second->GetMesh(i).uBaseIndex, m_renderable.second->GetMesh(i).uBaseVertex);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
                 }
             }
-
-            m_immediateContext->DrawIndexed(m_renderable.second->GetNumIndices(), 0u, 0);
+            else
+            {
+                m_immediateContext->DrawIndexed(m_renderable.second->GetNumIndices(), 0u, 0);
+            }
         }
+        
+        // DrawInstanced
+        for (auto voxel : m_scenes[m_pszMainSceneName]->GetVoxels())
+        {
+            ComPtr<ID3D11Buffer> vertexInstanceBuffer[2] =
+            {
+                voxel->GetVertexBuffer(),
+                voxel->GetInstanceBuffer()
+            };
+            m_immediateContext->IASetVertexBuffers(0u, 2u, vertexInstanceBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetInputLayout(voxel->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(voxel->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
+
+            CBChangeOnCameraMovement cb0 =
+            {
+                .View = m_camera.GetView(),
+            };
+            XMStoreFloat4(&cb0.CameraPosition, m_camera.GetEye());
+            CBChangeOnResize cb1 =
+            {
+                .Projection = m_projection
+            };
+
+            CBChangesEveryFrame cb2 =
+            {
+                .World = voxel->GetWorldMatrix(),
+                .OutputColor = voxel->GetOutputColor()
+            };
+
+            CBLights cb3 =
+            {
+                .LightPositions =
+                {
+                    m_aPointLights[0].get()->GetPosition(), //TIP : 얻어 걸리기;;
+                    m_aPointLights[1].get()->GetPosition()
+                },
+                .LightColors =
+                {
+                    m_aPointLights[0].get()->GetColor(),
+                    m_aPointLights[1].get()->GetColor()    //벡터는 전치 필요 X.
+                }
+            };
+
+            //Transpose
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb1.Projection = XMMatrixTranspose(cb1.Projection);
+            cb2.World = XMMatrixTranspose(cb2.World);
+
+            m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
+            m_immediateContext->UpdateSubresource(voxel->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1, 1, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2, 1, voxel->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2, 1, voxel->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
+            m_immediateContext->PSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+
+            m_immediateContext->VSSetShader(voxel->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(voxel->GetPixelShader().Get(), nullptr, 0u);
+            
+            m_immediateContext->DrawIndexedInstanced(voxel->GetNumIndices(), voxel->GetNumInstances(), 0u, 0u, 0u);
+        }
+
         m_swapChain->Present(0, 0);
     }
 
@@ -628,6 +753,74 @@ namespace library
             return E_FAIL;
     }
     
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetVertexShaderOfScene
+
+      Summary:  Sets the vertex shader for the voxels in a scene
+
+      Args:     PCWSTR pszSceneName
+                  Key of the scene
+                PCWSTR pszVertexShaderName
+                  Key of the vertex shader
+
+      Modifies: [m_scenes].
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT library::Renderer::SetVertexShaderOfScene(_In_ PCWSTR pszSceneName, _In_ PCWSTR pszVertexShaderName)
+    {
+        if (m_scenes.find(pszSceneName) != m_scenes.end())
+        {
+            if (m_vertexShaders.find(pszVertexShaderName) != m_vertexShaders.end())
+            {
+                for (auto voxel : m_scenes.find(pszSceneName)->second->GetVoxels())
+                {
+                    voxel.get()->SetVertexShader(m_vertexShaders[pszVertexShaderName]);
+                }
+                return S_OK;
+            }
+            else
+                return E_FAIL;
+        }
+        else
+            return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetPixelShaderOfScene
+
+      Summary:  Sets the pixel shader for the voxels in a scene
+
+      Args:     PCWSTR pszRenderableName
+                  Key of the renderable
+                PCWSTR pszPixelShaderName
+                  Key of the pixel shader
+
+      Modifies: [m_renderables].
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT library::Renderer::SetPixelShaderOfScene(_In_ PCWSTR pszSceneName, _In_ PCWSTR pszPixelShaderName)
+    {
+        if (m_scenes.find(pszSceneName) != m_scenes.end())
+        {
+            if (m_pixelShaders.find(pszPixelShaderName) != m_pixelShaders.end())
+            {
+                for (auto voxel : m_scenes.find(pszSceneName)->second->GetVoxels())
+                {
+                    voxel.get()->SetPixelShader(m_pixelShaders[pszPixelShaderName]);
+                }
+                return S_OK;
+            }
+            else
+                return E_FAIL;
+        }
+        else
+            return E_FAIL;
+    }
+
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::GetDriverType
 

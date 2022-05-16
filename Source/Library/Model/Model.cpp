@@ -19,8 +19,8 @@ namespace library
     Model::Model(_In_ const std::filesystem::path& filePath)
         : Renderable(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f))
         , m_filePath(filePath)
-        , m_aVertices()
-        , m_aIndices()
+        , m_aVertices(std::vector<SimpleVertex>())
+        , m_aIndices(std::vector<WORD>())   //TIP : 벡터 초기화.
         , m_padding()
     {
     }
@@ -171,7 +171,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Model::initAllMeshes(_In_ const aiScene* pScene)
     {
-        for (UINT i = 0; i < m_aMeshes.size(); ++i)
+        for (UINT i = 0u; i < m_aMeshes.size(); ++i)
         {
             const aiMesh* pMesh = pScene->mMeshes[i];
             initSingleMesh(pMesh);
@@ -252,7 +252,7 @@ namespace library
         std::filesystem::path parentDirectory = filePath.parent_path();
 
         // Initialize the materials
-        for (UINT i = 1u; i < pScene->mNumMaterials; ++i)   //Question : 0번은 없는 거야? → 전위연산자 후위연산자 순서 차이가 없네? 근데 전위가 좀 더 빠르다고 하네.
+        for (UINT i = 0u; i < pScene->mNumMaterials; ++i)   //Question : 0번은 없는 거야? → 전위연산자 후위연산자 순서 차이가 없네? 근데 전위가 좀 더 빠르다고 하네.
         {
             const aiMaterial* pMaterial = pScene->mMaterials[i];
 
@@ -272,22 +272,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Model::initSingleMesh(_In_ const aiMesh* pMesh)
     {
-        //QUESTION : (이거 알면 사흘 절약) 이 순서를 의도했다고 보기엔 매우 ...
-        for (UINT i = 0u; i < pMesh->mNumFaces; ++i)
-        {
-            const aiFace& face = pMesh->mFaces[i];
-            assert(face.mNumIndices == 3u);
-            WORD aIndices[3] =
-            {
-                static_cast<WORD>(face.mIndices[0]) + m_aVertices.size(),
-                static_cast<WORD>(face.mIndices[1]) + m_aVertices.size(),
-                static_cast<WORD>(face.mIndices[2]) + m_aVertices.size(),
-            };
-            m_aIndices.push_back(aIndices[0]);
-            m_aIndices.push_back(aIndices[1]);
-            m_aIndices.push_back(aIndices[2]);
-        }
-
+        //Question : (이거 알면 사흘 절약) 이 순서를 의도했다고 보기엔 매우 ... DrawIndexed...............................
         const aiVector3D zero3d(0.0f, 0.0f, 0.0f);
         
         for (UINT i = 0u; i < pMesh->mNumVertices; ++i)
@@ -305,6 +290,20 @@ namespace library
             m_aVertices.push_back(vertex);
         }
         
+        for (UINT i = 0u; i < pMesh->mNumFaces; ++i)
+        {
+            const aiFace& face = pMesh->mFaces[i];
+            assert(face.mNumIndices == 3u);
+            WORD aIndices[3] =
+            {
+                static_cast<WORD>(face.mIndices[0]),
+                static_cast<WORD>(face.mIndices[1]),
+                static_cast<WORD>(face.mIndices[2]),
+            };
+            m_aIndices.push_back(aIndices[0]);
+            m_aIndices.push_back(aIndices[1]);
+            m_aIndices.push_back(aIndices[2]);
+        }
     }
 
     void Model::loadColors(_In_ const aiMaterial* pMaterial, _In_ UINT uIndex)
@@ -337,8 +336,8 @@ namespace library
         )
     {
         HRESULT hr = S_OK;
-        m_aMaterials[uIndex].pDiffuse = nullptr;
-        
+        m_aMaterials[uIndex].pDiffuse = nullptr;    //Tip : shadered_ptr라서 만약에 reference count가 1이다? 그럼 소멸자 호출함. 2이상이면 nullptr 넣을 듯.
+
         if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
         {
             aiString aiPath;

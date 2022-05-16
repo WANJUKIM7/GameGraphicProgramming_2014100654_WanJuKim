@@ -97,6 +97,7 @@ namespace library
     {
         return m_cbChangeOnCameraMovement;
     }
+
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Camera::HandleInput
 
