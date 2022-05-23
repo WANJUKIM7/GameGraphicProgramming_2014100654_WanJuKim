@@ -4,6 +4,10 @@
 
 namespace library
 {
+    #define NUM_LIGHTS (2)
+    #define MAX_NUM_BONES (256)
+    #define MAX_NUM_BONES_PER_VERTEX (16)
+
     /*S+S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S
       Struct:    SimpleVertex
 
@@ -26,6 +30,12 @@ namespace library
     struct InstanceData
     {
         XMMATRIX Transformation;
+    };
+
+    struct AnimationData
+    {
+        XMUINT4 aBoneIndices;
+        XMFLOAT4 aBoneWeights;
     };
 
     /*S+S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S
@@ -58,6 +68,11 @@ namespace library
     {
         XMMATRIX World;
         XMFLOAT4 OutputColor;
+    };
+
+    struct CBSkinning
+    {
+        XMMATRIX BoneTransforms[MAX_NUM_BONES];
     };
 
     /*S+S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S

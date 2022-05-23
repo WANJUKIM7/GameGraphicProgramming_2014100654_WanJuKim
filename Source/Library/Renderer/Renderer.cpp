@@ -30,6 +30,7 @@ namespace library
         , m_cbChangeOnResize(nullptr)
         , m_cbLights(nullptr)
         , m_pszMainSceneName(L"")
+        , m_padding{}
         , m_camera(XMVectorSet(0.0f,0.0f,-10.0f,0.0f))
         , m_projection(XMMatrixIdentity())
         , m_renderables()   //Question : 초기화 이거 맞나? NULL로 하는 건 아니다.
@@ -319,6 +320,9 @@ namespace library
         for (auto m_renderable = begin(m_renderables); m_renderable != end(m_renderables); m_renderable++)
             m_renderable->second->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
 
+        for (auto m_model = begin(m_models); m_model != end(m_models); ++m_model)
+            m_model->second->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
+
         for (auto m_vertexShader = begin(m_vertexShaders); m_vertexShader != end(m_vertexShaders); m_vertexShader++)
             m_vertexShader->second->Initialize(m_d3dDevice.Get());
 
@@ -353,6 +357,32 @@ namespace library
         if (m_renderables.find(pszRenderableName) == m_renderables.end())
         {
             m_renderables[pszRenderableName] = renderable;
+            return S_OK;
+        }
+        else
+            return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::AddModel
+
+      Summary:  Add a model object
+
+      Args:     PCWSTR pszModelName
+                  Key of the model object
+                const std::shared_ptr<Model>& pModel
+                  Shared pointer to the model object
+
+      Modifies: [m_models].
+
+      Returns:  HRESULT
+                  Status code.
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT Renderer::AddModel(_In_ PCWSTR pszModelName, _In_ const std::shared_ptr<Model>& pModel)
+    {
+        if (m_models.find(pszModelName) == m_models.end())
+        {
+            m_models[pszModelName] = pModel;
             return S_OK;
         }
         else
@@ -513,7 +543,7 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::Update
 
-      Summary:  Update the renderables each frame
+      Summary:  Update the renderables and models each frame
 
       Args:     FLOAT deltaTime
                   Time difference of a frame
@@ -521,11 +551,15 @@ namespace library
     void Renderer::Update(_In_ FLOAT deltaTime)
     {
         m_camera.Update(deltaTime);
-        for (UINT i = 0; i < NUM_LIGHTS; ++i)
+        for (UINT i = 0u; i < NUM_LIGHTS; ++i)
             m_aPointLights[i].get()->Update(deltaTime);
         for (auto m_renderable : m_renderables)
         {
             m_renderable.second->Update(deltaTime);
+        }
+        for (auto m_model : m_models)
+        {
+            m_model.second->Update(deltaTime);
         }
     }
 
@@ -543,10 +577,10 @@ namespace library
 
         UINT stride[2] =
         {
-            sizeof(SimpleVertex),
-            sizeof(InstanceData)
+            static_cast<UINT>(sizeof(SimpleVertex)),
+            static_cast<UINT>(sizeof(InstanceData))
         };
-        UINT offset[2] = { 0 };
+        UINT offset[2] = { 0u };
         for (auto m_renderable : m_renderables)
         {
             m_immediateContext->IASetVertexBuffers(0, 1, m_renderable.second->GetVertexBuffer().GetAddressOf(), &stride[0], &offset[0]);
@@ -582,7 +616,7 @@ namespace library
                     m_aPointLights[1].get()->GetColor()    //벡터는 전치 필요 X.
                 }
             };
-            
+
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
@@ -593,21 +627,21 @@ namespace library
             m_immediateContext->UpdateSubresource(m_renderable.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
             
-            m_immediateContext->VSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(1, 1, m_cbChangeOnResize.GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(2, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2u, 1u, m_renderable.second->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
 
-            m_immediateContext->PSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
-            m_immediateContext->PSSetConstantBuffers(2, 1, m_renderable.second->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
-            m_immediateContext->PSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2u, 1u, m_renderable.second->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
+            m_immediateContext->PSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
 
             m_immediateContext->VSSetShader(m_renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(m_renderable.second->GetPixelShader().Get(), nullptr, 0u);
 
             if (m_renderable.second->HasTexture())
             {
-                for (UINT i = 0; i < m_renderable.second->GetNumMaterials(); ++i)
+                for (UINT i = 0u; i < m_renderable.second->GetNumMaterials(); ++i)
                 {
                     UINT materialIndex = m_renderable.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
                     m_immediateContext->PSSetShaderResources(0, 1, m_renderable.second->GetMaterial(materialIndex).pDiffuse->GetTextureResourceView().GetAddressOf());  //Question : 이 부분 관해서 FXH 좀 봐야할듯. → FBX랑 관련 없었다. DrawIndexed...
@@ -631,7 +665,7 @@ namespace library
             };
             m_immediateContext->IASetVertexBuffers(0u, 2u, vertexInstanceBuffer->GetAddressOf(), stride, offset);
             m_immediateContext->IASetInputLayout(voxel->GetVertexLayout().Get());
-            m_immediateContext->IASetIndexBuffer(voxel->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
+            m_immediateContext->IASetIndexBuffer(voxel->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);
 
             CBChangeOnCameraMovement cb0 =
             {
@@ -653,13 +687,13 @@ namespace library
             {
                 .LightPositions =
                 {
-                    m_aPointLights[0].get()->GetPosition(), //TIP : 얻어 걸리기;;
+                    m_aPointLights[0].get()->GetPosition(),
                     m_aPointLights[1].get()->GetPosition()
                 },
                 .LightColors =
                 {
                     m_aPointLights[0].get()->GetColor(),
-                    m_aPointLights[1].get()->GetColor()    //벡터는 전치 필요 X.
+                    m_aPointLights[1].get()->GetColor()
                 }
             };
 
@@ -673,19 +707,101 @@ namespace library
             m_immediateContext->UpdateSubresource(voxel->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
 
-            m_immediateContext->VSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(1, 1, m_cbChangeOnResize.GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(2, 1, voxel->GetConstantBuffer().GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2u, 1u, voxel->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
 
-            m_immediateContext->PSSetConstantBuffers(0, 1, m_camera.GetConstantBuffer().GetAddressOf());
-            m_immediateContext->PSSetConstantBuffers(2, 1, voxel->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
-            m_immediateContext->PSSetConstantBuffers(3, 1, m_cbLights.GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2u, 1u, voxel->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
+            m_immediateContext->PSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
 
             m_immediateContext->VSSetShader(voxel->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(voxel->GetPixelShader().Get(), nullptr, 0u);
             
             m_immediateContext->DrawIndexedInstanced(voxel->GetNumIndices(), voxel->GetNumInstances(), 0u, 0u, 0u);
+        }
+
+        // Model
+        stride[1] = static_cast<UINT>(sizeof(AnimationData));
+        for (auto model : m_models)
+        {
+            ComPtr<ID3D11Buffer> vertexAnimationBuffer[2] =
+            {
+                model.second->GetVertexBuffer().Get(),
+                model.second->GetAnimationBuffer().Get()
+            };
+            m_immediateContext->IASetVertexBuffers(0u, 2u, vertexAnimationBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetInputLayout(model.second->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(model.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);
+
+            CBChangeOnCameraMovement cb0 =
+            {
+                .View = m_camera.GetView(),
+            };
+            XMStoreFloat4(&cb0.CameraPosition, m_camera.GetEye());
+            CBChangeOnResize cb1 =
+            {
+                .Projection = m_projection
+            };
+
+            CBChangesEveryFrame cb2 =
+            {
+                .World = model.second->GetWorldMatrix(),
+                .OutputColor = model.second->GetOutputColor()
+            };
+
+            CBLights cb3 =
+            {
+                .LightPositions =
+                {
+                    m_aPointLights[0].get()->GetPosition(),
+                    m_aPointLights[1].get()->GetPosition()
+                },
+                .LightColors =
+                {
+                    m_aPointLights[0].get()->GetColor(),
+                    m_aPointLights[1].get()->GetColor()
+                }
+            };
+
+            CBSkinning cb4 = {}; //QUESITON : initializer?
+            for (UINT i = 0u; i < model.second->GetBoneTransforms().size(); ++i)
+                cb4.BoneTransforms[i] = model.second->GetBoneTransforms()[i];
+
+            //Transpose
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb1.Projection = XMMatrixTranspose(cb1.Projection);
+            cb2.World = XMMatrixTranspose(cb2.World);
+            for (UINT i = 0u; i < model.second->GetBoneTransforms().size(); ++i)
+                cb4.BoneTransforms[i] = XMMatrixTranspose(cb4.BoneTransforms[i]);
+
+            m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
+            m_immediateContext->UpdateSubresource(model.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            m_immediateContext->UpdateSubresource(model.second->GetSkinningConstantBuffer().Get(), 0u, nullptr, &cb4, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2u, 1u, model.second->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(4u, 1u, model.second->GetSkinningConstantBuffer().GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2u, 1u, model.second->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
+
+            m_immediateContext->VSSetShader(model.second->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(model.second->GetPixelShader().Get(), nullptr, 0u);
+
+            for (UINT i = 0u; i < model.second->GetNumMaterials(); ++i)
+            {
+                UINT materialIndex = model.second->GetMesh(i).uMaterialIndex;
+                m_immediateContext->PSSetShaderResources(0, 1, model.second->GetMaterial(materialIndex).pDiffuse->GetTextureResourceView().GetAddressOf());
+                m_immediateContext->PSSetSamplers(0, 1, model.second->GetMaterial(materialIndex).pDiffuse->GetSamplerState().GetAddressOf());
+                m_immediateContext->DrawIndexed(model.second->GetMesh(i).uNumIndices, model.second->GetMesh(i).uBaseIndex, model.second->GetMesh(i).uBaseVertex);
+            }
         }
 
         m_swapChain->Present(0, 0);
@@ -715,11 +831,9 @@ namespace library
                 m_renderables[pszRenderableName]->SetVertexShader(m_vertexShaders[pszVertexShaderName]);
                 return S_OK;
             }
-            else
-                return E_FAIL;
         }
-        else
-            return E_FAIL;
+
+        return E_FAIL;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -746,11 +860,67 @@ namespace library
                 m_renderables.find(pszRenderableName)->second->SetPixelShader(m_pixelShaders.find(pszPixelShaderName)->second);
                 return S_OK;
             }
-            else
-                return E_FAIL;
         }
-        else
-            return E_FAIL;
+
+        return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetVertexShaderOfModel
+
+      Summary:  Sets the vertex shader for a model
+
+      Args:     PCWSTR pszModelName
+                  Key of the model
+                PCWSTR pszVertexShaderName
+                  Key of the vertex shader
+
+      Modifies: [m_renderables].    //QUESTION : 굉장히 의심된다. model 아님?
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT Renderer::SetVertexShaderOfModel(_In_ PCWSTR pszModelName, _In_ PCWSTR pszVertexShaderName)
+    {
+        if (m_models.find(pszModelName) != m_models.end())
+        {
+            if (m_vertexShaders.find(pszVertexShaderName) != m_vertexShaders.end())
+            {
+                m_models.find(pszModelName)->second->SetVertexShader(m_vertexShaders.find(pszVertexShaderName)->second);
+                return S_OK;
+            }
+        }
+
+        return E_FAIL;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetPixelShaderOfModel
+
+      Summary:  Sets the pixel shader for a model
+
+      Args:     PCWSTR pszModelName
+                  Key of the model
+                PCWSTR pszPixelShaderName
+                  Key of the pixel shader
+
+      Modifies: [m_renderables].    //QUESTION : 너도.
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT Renderer::SetPixelShaderOfModel(_In_ PCWSTR pszModelName, _In_ PCWSTR pszPixelShaderName)
+    {
+        if (m_models.find(pszModelName) != m_models.end())
+        {
+            if (m_pixelShaders.find(pszPixelShaderName) != m_pixelShaders.end())
+            {
+                m_models.find(pszModelName)->second->SetPixelShader(m_pixelShaders.find(pszPixelShaderName)->second);
+                return S_OK;
+            }
+        }
+
+        return E_FAIL;
     }
     
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -780,11 +950,9 @@ namespace library
                 }
                 return S_OK;
             }
-            else
-                return E_FAIL;
         }
-        else
-            return E_FAIL;
+
+        return E_FAIL;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -814,11 +982,9 @@ namespace library
                 }
                 return S_OK;
             }
-            else
-                return E_FAIL;
         }
-        else
-            return E_FAIL;
+
+        return E_FAIL;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M

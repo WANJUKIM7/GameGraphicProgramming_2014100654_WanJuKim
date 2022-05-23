@@ -12,7 +12,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     InstancedRenderable::InstancedRenderable(_In_ const XMFLOAT4& outputColor)
         : Renderable(outputColor)
-        , m_padding()
+        , m_padding{0}
         , m_instanceBuffer(nullptr)
         , m_aInstanceData(std::vector<InstanceData>())  //그냥 이렇게 해본다 이니셜라이저.
     {
@@ -32,7 +32,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     InstancedRenderable::InstancedRenderable(_In_ std::vector<InstanceData>&& aInstanceData, _In_ const XMFLOAT4& outputColor)
         : Renderable(outputColor)
-        , m_padding()
+        , m_padding{0}
         , m_instanceBuffer(nullptr)
         , m_aInstanceData(aInstanceData)
     {

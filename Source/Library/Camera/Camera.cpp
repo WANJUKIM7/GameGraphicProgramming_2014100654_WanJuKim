@@ -21,7 +21,7 @@ namespace library
         , m_moveUpDown(0.0f)
         , m_travelSpeed(5.0f)
         , m_rotationSpeed(0.001f)
-        , m_padding()
+        , m_padding{}
         , m_cameraForward(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f))
         , m_cameraRight(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f))
         , m_cameraUp(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f))

@@ -122,7 +122,7 @@ float4 PSVoxel(PS_INPUT input) : SV_Target
     float3 specular = float3(0.0f, 0.0f, 0.0f);
     float3 viewDirection = normalize(input.WorldPosition - CameraPosition.xyz);
     
-    for (uint i = 0; i < 2; i++)
+    for (uint i = 0u; i < 2u; i++)
     {
         //diffuse
         float3 lightDirection = normalize(input.WorldPosition - LightPosition[i].xyz);

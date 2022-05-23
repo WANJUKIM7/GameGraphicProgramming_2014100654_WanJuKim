@@ -25,7 +25,7 @@ namespace library
         , m_vertexShader(nullptr)
         , m_pixelShader(nullptr)
         , m_outputColor(outputColor)
-        , m_padding()
+        , m_padding{}  //TIP : 배열은 이렇게 이니셜라이즈 한다.
         , m_world(XMMatrixIdentity())
     {
     }

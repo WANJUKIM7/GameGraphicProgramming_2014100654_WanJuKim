@@ -62,9 +62,9 @@ namespace library
         // Create InputLayout
         D3D11_INPUT_ELEMENT_DESC layouts[] =
         {
-            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"POSITION", 0u, DXGI_FORMAT_R32G32B32_FLOAT, 0u,  0u, D3D11_INPUT_PER_VERTEX_DATA, 0u},
+            {"TEXCOORD", 0u, DXGI_FORMAT_R32G32_FLOAT,    0u, 12u, D3D11_INPUT_PER_VERTEX_DATA, 0u},
+            {"NORMAL",   0u, DXGI_FORMAT_R32G32B32_FLOAT, 0u, 20u, D3D11_INPUT_PER_VERTEX_DATA, 0u},
 
             // instance // Question : 하나의 inputlayout을 공유해도 되나? 
             // InputSlot에 따라 다른 버퍼에 넣을 수 있다!! ex. 0은 buffer[0], 1은 buffer[1] 등등!! → 아예 다른 shader을 사용할 수 있는 근거?! 놀라운 기술 ㄷㄷ.
@@ -75,10 +75,10 @@ namespace library
             {"INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 12, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
             {"INSTANCE_NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 24, D3D11_INPUT_PER_INSTANCE_DATA, 1},*/ // TIP : 버퍼를 2번 나눠서 전달하니까 이런 게 필요 없는 거구나...
             // SemanticName이랑 SemanticIndex랑 모두 같게하니까 SemanticName이 같다고 warning 나오고, SemanticIndex를 바꾸니까 워닝 안 나오네? 잘 전달되는지가 의문.
-            {"INSTANCE_TRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1,  0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-            {"INSTANCE_TRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-            {"INSTANCE_TRANSFORM", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-            {"INSTANCE_TRANSFORM", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+            {"INSTANCE_TRANSFORM", 0u, DXGI_FORMAT_R32G32B32A32_FLOAT, 1u,  0u, D3D11_INPUT_PER_INSTANCE_DATA, 1u},
+            {"INSTANCE_TRANSFORM", 1u, DXGI_FORMAT_R32G32B32A32_FLOAT, 1u, 16u, D3D11_INPUT_PER_INSTANCE_DATA, 1u},
+            {"INSTANCE_TRANSFORM", 2u, DXGI_FORMAT_R32G32B32A32_FLOAT, 1u, 32u, D3D11_INPUT_PER_INSTANCE_DATA, 1u},
+            {"INSTANCE_TRANSFORM", 3u, DXGI_FORMAT_R32G32B32A32_FLOAT, 1u, 48u, D3D11_INPUT_PER_INSTANCE_DATA, 1u}            
         };
         UINT uNumElements = ARRAYSIZE(layouts);
 

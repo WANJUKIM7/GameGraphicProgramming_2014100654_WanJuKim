@@ -72,6 +72,7 @@ namespace library
 
         HRESULT Initialize(_In_ HWND hWnd);
         HRESULT AddRenderable(_In_ PCWSTR pszRenderableName, _In_ const std::shared_ptr<Renderable>& renderable);
+        HRESULT AddModel(_In_ PCWSTR pszModelName, _In_ const std::shared_ptr<Model>& pModel);
         HRESULT AddPointLight(_In_ size_t index, _In_ const std::shared_ptr<PointLight>& pointLight);
         HRESULT AddVertexShader(_In_ PCWSTR pszVertexShaderName, _In_ const std::shared_ptr<VertexShader>& vertexShader);
         HRESULT AddPixelShader(_In_ PCWSTR pszPixelShaderName, _In_ const std::shared_ptr<PixelShader>& pixelShader);
@@ -85,10 +86,14 @@ namespace library
 
         HRESULT SetVertexShaderOfRenderable(_In_ PCWSTR pszRenderableName, _In_ PCWSTR pszVertexShaderName);
         HRESULT SetPixelShaderOfRenderable(_In_ PCWSTR pszRenderableName, _In_ PCWSTR pszPixelShaderName);
+        HRESULT SetVertexShaderOfModel(_In_ PCWSTR pszModelName, _In_ PCWSTR pszVertexShaderName);
+        HRESULT SetPixelShaderOfModel(_In_ PCWSTR pszModelName, _In_ PCWSTR pszPixelShaderName);
         HRESULT SetVertexShaderOfScene(_In_ PCWSTR pszSceneName, _In_ PCWSTR pszVertexShaderName);
         HRESULT SetPixelShaderOfScene(_In_ PCWSTR pszSceneName, _In_ PCWSTR pszPixelShaderName);
 
         D3D_DRIVER_TYPE GetDriverType() const;
+
+        std::shared_ptr<MainWindow> WindowPtr;
 
     private:
         D3D_DRIVER_TYPE m_driverType;
@@ -105,10 +110,12 @@ namespace library
         ComPtr<ID3D11Buffer> m_cbChangeOnResize;
         ComPtr<ID3D11Buffer> m_cbLights;
         PCWSTR m_pszMainSceneName;
+        BYTE m_padding[8];
         Camera m_camera;
         XMMATRIX m_projection;
 
         std::unordered_map<std::wstring, std::shared_ptr<Renderable>> m_renderables;
+        std::unordered_map<std::wstring, std::shared_ptr<Model>> m_models;
         std::shared_ptr<PointLight> m_aPointLights[NUM_LIGHTS];
         std::unordered_map<std::wstring, std::shared_ptr<VertexShader>> m_vertexShaders;
         std::unordered_map<std::wstring, std::shared_ptr<PixelShader>> m_pixelShaders;

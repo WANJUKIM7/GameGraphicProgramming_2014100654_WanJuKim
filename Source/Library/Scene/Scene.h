@@ -1,6 +1,6 @@
 /*+===================================================================
   File:      V0XEL.H
-
+  
   Summary:   Voxel header file contains declarations of Voxel class
              used for the lab samples of Game Graphics Programming
              course.

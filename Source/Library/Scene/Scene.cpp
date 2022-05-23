@@ -10,7 +10,7 @@ namespace library
         FLOAT fin = 0.0f;
         FLOAT div = 0.0f;
 
-        for (UINT i = 0; i < uDepth; ++i)
+        for (UINT i = 0u; i < uDepth; ++i)
         {
             div += 256.0f * amp;
             fin += getNoise2d(xa, ya) * amp;
