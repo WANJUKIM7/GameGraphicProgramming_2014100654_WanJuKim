@@ -105,8 +105,8 @@ PS_PHONG_INPUT VSPhong(VS_INPUT input)
     PS_PHONG_INPUT output = (PS_PHONG_INPUT) 0;
     
     matrix skinTransform = (matrix) 0; // skinTransform == bone space → model space(world space 전까지.)
-    skinTransform += mul(BoneTransforms[input.BoneIndices.x], input.BoneWeights.x); //QUESTION : 설명 가능?
-    skinTransform += mul(BoneTransforms[input.BoneIndices.y], input.BoneWeights.y); 
+    skinTransform += mul(BoneTransforms[input.BoneIndices.x], input.BoneWeights.x); // Question : 설명 가능?
+    skinTransform += mul(BoneTransforms[input.BoneIndices.y], input.BoneWeights.y); // bone마다 가중치 말하는 듯. 이거 안해주면 뼈가 튀어나올 수 있다는 거.
     skinTransform += mul(BoneTransforms[input.BoneIndices.z], input.BoneWeights.z);
     skinTransform += mul(BoneTransforms[input.BoneIndices.w], input.BoneWeights.w);
     

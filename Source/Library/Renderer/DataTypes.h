@@ -39,6 +39,18 @@ namespace library
     };
 
     /*S+S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S
+      Struct:   NormalData
+
+      Summary:  NormalData structure containing tangent space vetors
+                of the vertex
+    S---S---S---S---S---S---S---S---S---S---S---S---S---S---S---S---S-S*/
+    struct NormalData
+    {
+        XMFLOAT3 Tangent;
+        XMFLOAT3 Bitangent;
+    };
+
+    /*S+S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S+++S
       Struct:   CBChangeOnCameraMovement
 
       Summary:  Constant buffer containing view matrix
@@ -68,6 +80,7 @@ namespace library
     {
         XMMATRIX World;
         XMFLOAT4 OutputColor;
+        BOOL HasNormalMap;
     };
 
     struct CBSkinning

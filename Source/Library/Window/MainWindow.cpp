@@ -27,6 +27,25 @@ namespace library
         if (FAILED(hr))
             return E_FAIL;
 
+        // Clip Mouse.
+        GetClientRect(m_hWnd, &rc);
+
+        POINT p1, p2;
+        p1.x = rc.left;
+        p1.y = rc.top;
+        p2.x = rc.right;
+        p2.y = rc.bottom;
+
+        ClientToScreen(m_hWnd, &p1);
+        ClientToScreen(m_hWnd, &p2);
+
+        rc.left = p1.x;
+        rc.top = p1.y - 25; //Question : GetWindowRect()라는 함수는 윈도우 창 크기를 가져오면 창 부분을 깔끔하게 가져올 수 있다.
+        rc.right = p2.x;
+        rc.bottom = p2.y;
+
+        ClipCursor(&rc);
+
         return S_OK;
     }
 

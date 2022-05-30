@@ -102,7 +102,7 @@ namespace library
         }
         else
         {
-            pThis = (DerivedType*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+            pThis = reinterpret_cast<DerivedType*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
         }
         if (pThis)
         {

@@ -1,3 +1,3 @@
-//#include "PhongShaders.fxh"
+#include "PhongShaders.fxh"
 //#include "VoxelShaders.fxh"
-#include "SkinningShaders.fxh"
+//#include "SkinningShaders.fxh"

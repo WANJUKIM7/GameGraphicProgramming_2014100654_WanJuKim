@@ -1,4 +1,9 @@
 #include "Renderer/Renderable.h"
+
+#include "assimp/Importer.hpp"	// C++ importer interface
+#include "assimp/scene.h"		// output data structure
+#include "assimp/postprocess.h"	// post processing flags
+
 #include "Texture/DDSTextureLoader.h"
 
 namespace library
@@ -8,39 +13,45 @@ namespace library
 
       Summary:  Constructor
 
-      Args:     const XMFLOAT4* outputColor
-                  Default color of the renderable
+      Args:     const XMFLOAT4& outputColor
+                  Default color to shader the renderable
 
       Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer,
-                 m_textureRV, m_samplerLinear, m_vertexShader,
-                 m_pixelShader, m_textureFilePath, m_outputColor,
-                 m_world].
+                 m_normalBuffer, m_aMeshes, m_aMaterials, m_vertexShader,
+                 m_pixelShader, m_outputColor, m_world, m_bHasNormalMap
+                 m_aNormalData].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     Renderable::Renderable(_In_ const XMFLOAT4& outputColor)
         : m_vertexBuffer(nullptr)
         , m_indexBuffer(nullptr)
         , m_constantBuffer(nullptr)
+        , m_normalBuffer(nullptr)
         , m_aMeshes()
         , m_aMaterials()
+        , m_aNormalData()
         , m_vertexShader(nullptr)
         , m_pixelShader(nullptr)
         , m_outputColor(outputColor)
         , m_padding{}  //TIP : 배열은 이렇게 이니셜라이즈 한다.
         , m_world(XMMatrixIdentity())
+        , m_bHasNormalMap(false)
     {
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::initialize
 
-      Summary:  Initializes the buffers, and the world matrix
+      Summary:  Initializes the buffers and the world matrix
 
       Args:     ID3D11Device* pDevice
                   The Direct3D device to create the buffers
                 ID3D11DeviceContext* pImmediateContext
                   The Direct3D context to set buffers
+                PCWSTR pszTextureFileName   //QUESTION : ??
+                  File name of the texture to usen
 
-      Modifies: [m_vertexBuffer, m_indexBuffer, m_constantBuffer].
+      Modifies: [m_vertexBuffer, m_normalBuffer, m_indexBuffer
+                 m_constantBuffer].
 
       Returns:  HRESULT
                   Status code
@@ -70,6 +81,34 @@ namespace library
                 .SysMemSlicePitch = 0u
             };
             hr = pDevice->CreateBuffer(&bd, &initData, m_vertexBuffer.GetAddressOf());
+
+            if (FAILED(hr))
+                return hr;
+        }
+
+        if (HasTexture() == true && m_aNormalData.empty() == true)
+        {
+            calculateNormalMapVectors();
+        }
+
+        // Create NormalBuffer
+        {
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(NormalData) * GetNumVertices(),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_VERTEX_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u
+            };
+
+            D3D11_SUBRESOURCE_DATA initData =
+            {
+                .pSysMem = getVertices(),
+                .SysMemPitch = 0u,
+                .SysMemSlicePitch = 0u
+            };
+            hr = pDevice->CreateBuffer(&bd, &initData, m_normalBuffer.GetAddressOf());
 
             if (FAILED(hr))
                 return hr;
@@ -119,6 +158,107 @@ namespace library
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::calculateNormalMapVectors
+
+      Summary:  Calculate tangent and bitangent vectors of every vertex
+
+      Modifies: [m_aNormalData].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderable::calculateNormalMapVectors()
+    {
+        UINT uNumFaces = GetNumIndices() / 3;
+        const SimpleVertex* aVertices = getVertices();
+        const WORD* aIndices = getIndices();
+        m_aNormalData.resize(GetNumVertices(), NormalData());
+        XMFLOAT3 tangent, bitangent = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        for (int i = 0; i < uNumFaces; ++i) 
+        {
+            NormalData normalData = {};
+            calculateTangentBitangent(
+                  aVertices[aIndices[i * 3 + 1]]
+                , aVertices[aIndices[i * 3 + 2]]
+                , aVertices[aIndices[i * 3 + 3]]
+                , tangent
+                , bitangent);
+
+            m_aNormalData[aIndices[i * 3]].Tangent = tangent;
+            m_aNormalData[aIndices[i * 3]].Bitangent = bitangent;
+
+            m_aNormalData[aIndices[i * 3 + 1]].Tangent = tangent;
+            m_aNormalData[aIndices[i * 3 + 1]].Bitangent = bitangent;
+
+            m_aNormalData[aIndices[i * 3 + 2]].Tangent = tangent;
+            m_aNormalData[aIndices[i * 3 + 2]].Bitangent = bitangent;
+        }
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::calculateTangentBitangent
+
+      Summary:  Calculate tangent/bitangent vectors of the given face
+
+      Args:     SimpleVertex& v1
+                  The first vertex of the face
+                SimpleVertex& v2
+                  The second vertex of the face
+                SimpleVertex& v3
+                  The third vertex of the face
+                XMFLOAT3& tangent
+                  Calculated tangent vector
+                XMFLOAT3& bitangent
+                  Calculated bitangent vector
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderable::calculateTangentBitangent(_In_ const SimpleVertex& v1, _In_ const SimpleVertex& v2, _In_ const SimpleVertex& v3, _Out_ XMFLOAT3& tangent, _Out_ XMFLOAT3& bitangent)
+    {
+        XMFLOAT3 vector1, vector2;
+        XMFLOAT2 tuVector, tvVector;
+
+        // Calculate the two vectors for this face.
+        vector1.x = v2.Position.x - v1.Position.x;
+        vector1.y = v2.Position.y - v1.Position.y;
+        vector1.z = v2.Position.z - v1.Position.z;
+
+        vector2.x = v3.Position.x - v1.Position.x;
+        vector2.y = v3.Position.y - v1.Position.y;
+        vector2.z = v3.Position.z - v1.Position.z;
+
+        // Calculate the tu and tv texture space vectors.
+        tuVector.x = v2.TexCoord.x - v1.TexCoord.x;
+        tvVector.x = v2.TexCoord.y - v1.TexCoord.y;
+
+        tuVector.y = v3.TexCoord.x - v1.TexCoord.x;
+        tvVector.y = v3.TexCoord.y - v1.TexCoord.y;
+
+        // Calculate the denominator of the tangent/binormal equation.
+        float den = 1.0f / (tuVector.x * tvVector.y - tuVector.y * tvVector.x);
+
+        // Calculate the cross products and multiply by the coefficient to get the tangent and binormal.
+        tangent.x = (tvVector.y * vector1.x - tvVector.x * vector2.x) * den;
+        tangent.y = (tvVector.y * vector1.y - tvVector.x * vector2.y) * den;
+        tangent.z = (tvVector.y * vector1.z - tvVector.x * vector2.z) * den;
+
+        bitangent.x = (tuVector.x * vector2.x - tuVector.y * vector1.x) * den;
+        bitangent.y = (tuVector.x * vector2.y - tuVector.y * vector1.y) * den;
+        bitangent.z = (tuVector.x * vector2.z - tuVector.y * vector1.z) * den;
+
+        // Calculate the length of this normal.
+        float length = sqrt((tangent.x * tangent.x) + (tangent.y * tangent.y) + (tangent.z * tangent.z));
+
+        // Normalize the normal and then store it
+        tangent.x = tangent.x / length;
+        tangent.y = tangent.y / length;
+        tangent.z = tangent.z / length;
+
+        // Calculate the length of this normal.
+        length = sqrt((bitangent.x * bitangent.x) + (bitangent.y * bitangent.y) + (bitangent.z * bitangent.z));
+
+        // Normalize the normal and then store it
+        bitangent.x = bitangent.x / length;
+        bitangent.y = bitangent.y / length;
+        bitangent.z = bitangent.z / length;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::SetVertexShader
 
       Summary:  Sets the vertex shader to be used for this renderable 
@@ -148,6 +288,53 @@ namespace library
     void Renderable::SetPixelShader(_In_ const std::shared_ptr<PixelShader>& pixelShader)
     {
         m_pixelShader = pixelShader;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::AddMaterial
+
+      Summary:  Add material to this renderable
+
+      Args:     std::shared_ptr<Material>& material
+                  Material to add
+
+      Modifies: [m_aMaterials]
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderable::AddMaterial(_In_ const std::shared_ptr<Material>& material)
+    {
+        m_aMaterials.push_back(material);
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::SetMaterialOfMesh
+
+      Summary:  Set the material of the mesh
+
+      Args:     const UINT uMeshIndex
+                  Index of the mesh
+                 const UINT uMaterialIndex
+                  Index of the material
+
+      Modifies: [m_aMeshes, m_bHasNormalMap]
+
+      Returns:  HRESULT
+                  Status code
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    HRESULT Renderable::SetMaterialOfMesh(_In_ const UINT uMeshIndex, _In_ const UINT uMaterialIndex)
+    {
+        if (uMeshIndex >= m_aMeshes.size() || uMaterialIndex >= m_aMaterials.size())
+        {
+            return E_FAIL;
+        }
+
+        m_aMeshes[uMeshIndex].uMaterialIndex = uMaterialIndex;
+
+        if (m_aMaterials[uMeshIndex]->pNormal)
+        {
+            m_bHasNormalMap = true;
+        }
+
+        return S_OK;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
@@ -229,6 +416,19 @@ namespace library
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::GetNormalBuffer
+
+      Summary:  Return the normal buffer
+
+      Returns:  ComPtr<ID3D11Buffer>&
+                  Normal buffer
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    ComPtr<ID3D11Buffer>& Renderable::GetNormalBuffer()
+    {
+        return m_normalBuffer;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::GetWorldMatrix
 
       Summary:  Returns the world matrix
@@ -270,15 +470,16 @@ namespace library
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderable::GetMaterial
 
-      Summary:  Returns a material at given index
+      Summary:  Return the material of the given index
 
-      Returns:  const Material&
-                  Material at given index
+      Args:     UINT uIndex
+                  Index of the material
+
+      Returns:  std::shared_ptr<Material>&
+                  Material
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    const Material& Renderable::GetMaterial(UINT uIndex) const
+    const std::shared_ptr<Material>& Renderable::GetMaterial(UINT uIndex) const
     {
-        assert(uIndex < m_aMaterials.size());
-
         return m_aMaterials[uIndex];
     }
 
@@ -424,5 +625,17 @@ namespace library
         //3. 포인터 형변환이 안됨. (안되는 게 맞는 거.) feat. (QUESTION) : 업다운 캐스팅.
         //4. ()보다 편하게 읽기 가능. (색칠...)
         return static_cast<UINT>(m_aMaterials.size());  
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderable::HasNormalMap
+
+      Summary:  Return whether the renderable has normal map
+
+      Returns:  BOOL
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    BOOL Renderable::HasNormalMap() const
+    {
+        return m_bHasNormalMap;
     }
 }
