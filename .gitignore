@@ -361,3 +361,16 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# include obj, Binary, Library
+!Source/Game/Content/nanosuit/nanosuit.obj
+
+!External/Assimp/Binary/x64/Debug/assimp-vc142-mtd.dll
+!External/Assimp/Binary/x64/Release/assimp-vc142-mt.dll
+
+!External/Assimp/Library/x64/Debug/assimp-vc142-mtd.lib
+!External/Assimp/Library/x64/Release/assimp-vc142-mt.lib
+
+
+
+
