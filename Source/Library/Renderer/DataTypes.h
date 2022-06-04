@@ -4,7 +4,7 @@
 
 namespace library
 {
-    #define NUM_LIGHTS (2)
+    #define NUM_LIGHTS (1)
     #define MAX_NUM_BONES (256)
     #define MAX_NUM_BONES_PER_VERTEX (16)
 
@@ -97,5 +97,15 @@ namespace library
     {
         XMFLOAT4 LightPositions[NUM_LIGHTS];
         XMFLOAT4 LightColors[NUM_LIGHTS];
+        XMMATRIX LightViews[NUM_LIGHTS];
+        XMMATRIX LightProjections[NUM_LIGHTS];
+    };
+
+    struct CBShadowMatrix
+    {
+        XMMATRIX World;
+        XMMATRIX View;
+        XMMATRIX Projection;
+        BOOL IsVoxel;
     };
 }

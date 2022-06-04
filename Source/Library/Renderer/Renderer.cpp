@@ -9,8 +9,11 @@ namespace library
 
       Modifies: [m_driverType, m_featureLevel, m_d3dDevice, m_d3dDevice1,
                   m_immediateContext, m_immediateContext1, m_swapChain,
-                  m_swapChain1, m_renderTargetView, m_vertexShader,
-                  m_pixelShader, m_vertexLayout, m_vertexBuffer].
+                  m_swapChain1, m_renderTargetView, m_depthStencil,
+                  m_depthStencilView, m_cbChangeOnResize, m_cbShadowMatrix,
+                  m_pszMainSceneName, m_camera, m_projection, m_scenes
+                  m_invalidTexture, m_shadowMapTexture, m_shadowVertexShader,
+                  m_shadowPixelShader].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
    //TIP : 이니셜라이저랑 할당은 매우 다르다. 초기화를 해줘야 처음부터 '유효한 개체'라고 할 수 있다. 무조건 필요하다 그런 건가?
     Renderer::Renderer()
@@ -26,12 +29,16 @@ namespace library
         , m_depthStencil()
         , m_depthStencilView()
         , m_cbChangeOnResize()
+        , m_cbShadowMatrix()
         , m_pszMainSceneName(nullptr)
         , m_padding{ '\0' }
         , m_camera(XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f))
         , m_projection()
         , m_scenes()
         , m_invalidTexture(std::make_shared<Texture>(L"Content/Common/InvalidTexture.png"))
+        , m_shadowMapTexture()
+        , m_shadowVertexShader()
+        , m_shadowPixelShader()
     {
     }
 
@@ -46,7 +53,8 @@ namespace library
       Modifies: [m_d3dDevice, m_featureLevel, m_immediateContext,
                   m_d3dDevice1, m_immediateContext1, m_swapChain1,
                   m_swapChain, m_renderTargetView, m_vertexShader,
-                  m_vertexLayout, m_pixelShader, m_vertexBuffer].
+                  m_vertexLayout, m_pixelShader, m_vertexBuffer
+                  m_cbShadowMatrix].
 
       Returns:  HRESULT
                   Status code
@@ -294,6 +302,34 @@ namespace library
             return hr;
         }
 
+        // Create Shadow ConstantBuffer.
+        {
+            D3D11_BUFFER_DESC bd =
+            {
+                .ByteWidth = sizeof(CBShadowMatrix),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0
+            };
+            hr = m_d3dDevice->CreateBuffer(&bd, nullptr, m_cbShadowMatrix.GetAddressOf());
+            if (FAILED(hr))
+            {
+                return hr;
+            }
+        }
+
+        // initialize m_shadowMapTexture.
+        m_shadowMapTexture = std::make_shared<RenderTexture>(uWidth, uHeight);
+        hr = m_shadowMapTexture->Initialize(m_d3dDevice.Get(), m_immediateContext.Get());
+        if (FAILED(hr))
+        {
+            return hr;
+        }
+
+        // initialize all point lights.
+        for (UINT i = 0u; i < NUM_LIGHTS; ++i)
+            m_scenes[m_pszMainSceneName]->GetPointLight(i)->Initialize(uWidth, uHeight);
+
         return S_OK;
     }
 
@@ -371,6 +407,24 @@ namespace library
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::SetShadowMapShaders
+
+      Summary:  Set shaders for the shadow mapping
+
+      Args:     std::shared_ptr<ShadowVertexShader>
+                  vertex shader
+                std::shared_ptr<PixelShader>
+                  pixel shader
+
+      Modifies: [m_shadowVertexShader, m_shadowPixelShader].
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderer::SetShadowMapShaders(_In_ std::shared_ptr<ShadowVertexShader> vertexShader, _In_ std::shared_ptr<PixelShader> pixelShader)
+    {
+        m_shadowVertexShader = move(vertexShader);
+        m_shadowPixelShader = move(pixelShader);
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
       Method:   Renderer::HandleInput
 
       Summary:  Handle user mouse input
@@ -406,6 +460,7 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Renderer::Render()
     {
+        RenderSceneToTexture();
         //Draw ~ Present 사이에만 없으면 되나 봄.
         m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);    
@@ -418,6 +473,7 @@ namespace library
         };
         UINT offset[3] = { 0u };
         std::shared_ptr<library::Scene> scene = m_scenes[m_pszMainSceneName];
+
         for (auto renderable : scene->GetRenderables())
         {
             ComPtr<ID3D11Buffer> vertexNormalBuffer[2] =
@@ -435,7 +491,7 @@ namespace library
                 .View = m_camera.GetView(),
             };
             XMStoreFloat4(&cb0.CameraPosition, m_camera.GetEye());
-            CBChangeOnResize cb1 =
+            CBChangeOnResize cb1 =  //QUESTION : projection 관련한 것들은 없어도 되나? initialize에서 했는데
             {
                 .Projection = m_projection
             };
@@ -449,22 +505,18 @@ namespace library
             
             CBLights cb3 =
             {
-                .LightPositions =
-                {
-                    scene->GetPointLight(0)->GetPosition(),
-                    scene->GetPointLight(1)->GetPosition(),
-                },
-                .LightColors = 
-                {
-                    scene->GetPointLight(0)->GetColor(),
-                    scene->GetPointLight(1)->GetColor(),    //벡터는 전치 필요 X.
-                }
+                .LightPositions = scene->GetPointLight(0)->GetPosition(),
+                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
             };
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
+            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
             
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
@@ -488,24 +540,18 @@ namespace library
                 for (UINT i = 0u; i < renderable.second->GetNumMeshes(); ++i)
                 {
                     UINT materialIndex = renderable.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
-                    ComPtr<ID3D11ShaderResourceView> ppShaderResourceViews[2] =
+                    if (renderable.second->GetMaterial(materialIndex)->pDiffuse)
                     {
-                        renderable.second->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView(),
-                        renderable.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView()
-                    };
-                    ComPtr<ID3D11SamplerState> ppSamplers[2] =
+                        m_immediateContext->PSSetShaderResources(0u, 1u, renderable.second->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(0u, 1u, renderable.second->GetMaterial(materialIndex)->pDiffuse->GetSamplerState().GetAddressOf());
+                    }
+                    if (renderable.second->GetMaterial(materialIndex)->pNormal)
                     {
-                        renderable.second->GetMaterial(materialIndex)->pDiffuse->GetSamplerState(),
-                        renderable.second->GetMaterial(materialIndex)->pNormal->GetSamplerState()
-                    };
-                    m_immediateContext->PSSetShaderResources(
-                          0u
-                        , 2u
-                        , ppShaderResourceViews->GetAddressOf());  //Question : 이 부분 관해서 FXH 좀 봐야할듯. → FBX랑 관련 없었다. DrawIndexed...
-                    m_immediateContext->PSSetSamplers(
-                          0u
-                        , 2u
-                        , ppSamplers->GetAddressOf());
+                        m_immediateContext->PSSetShaderResources(1u, 1u, renderable.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(1u, 1u, renderable.second->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
+                    }
+                    m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());
                     m_immediateContext->DrawIndexed(
                           renderable.second->GetMesh(i).uNumIndices
                         , renderable.second->GetMesh(i).uBaseIndex
@@ -551,22 +597,18 @@ namespace library
 
             CBLights cb3 =
             {
-                .LightPositions =
-                {
-                    scene->GetPointLight(0)->GetPosition(),
-                    scene->GetPointLight(1)->GetPosition(),
-                },
-                .LightColors =
-                {
-                    scene->GetPointLight(0)->GetColor(),
-                    scene->GetPointLight(1)->GetColor(),    //벡터는 전치 필요 X.
-                }
+                .LightPositions = scene->GetPointLight(0)->GetPosition(),
+                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
             };
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
+            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
 
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
@@ -590,24 +632,16 @@ namespace library
                 for (UINT i = 0u; i < model.second->GetNumMeshes(); ++i)
                 {
                     UINT materialIndex = model.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
-                    ComPtr<ID3D11ShaderResourceView> ppShaderResourceViews[2] =
+                    if (model.second->GetMaterial(materialIndex)->pDiffuse)
                     {
-                        model.second->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView(),
-                        model.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView()
-                    };
-                    ComPtr<ID3D11SamplerState> ppSamplers[2] =
+                        m_immediateContext->PSSetShaderResources(0u, 1u, model.second->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(0u, 1u, model.second->GetMaterial(materialIndex)->pDiffuse->GetSamplerState().GetAddressOf());
+                    }
+                    if (model.second->GetMaterial(materialIndex)->pNormal)
                     {
-                        model.second->GetMaterial(materialIndex)->pDiffuse->GetSamplerState(),
-                        model.second->GetMaterial(materialIndex)->pNormal->GetSamplerState()
-                    };
-                    m_immediateContext->PSSetShaderResources(
-                          0u
-                        , 2u
-                        , ppShaderResourceViews->GetAddressOf());  //Question : 이 부분 관해서 FXH 좀 봐야할듯. → FBX랑 관련 없었다. DrawIndexed...
-                    m_immediateContext->PSSetSamplers(
-                          0u
-                        , 2u
-                        , ppSamplers->GetAddressOf());
+                        m_immediateContext->PSSetShaderResources(1u, 1u, model.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(1u, 1u, model.second->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
+                    }
                     m_immediateContext->DrawIndexed(
                           model.second->GetMesh(i).uNumIndices
                         , model.second->GetMesh(i).uBaseIndex
@@ -653,22 +687,18 @@ namespace library
 
             CBLights cb3 =
             {
-                .LightPositions =
-                {
-                    scene->GetPointLight(0)->GetPosition(),
-                    scene->GetPointLight(1)->GetPosition(),
-                },
-                .LightColors =
-                {
-                    scene->GetPointLight(0)->GetColor(),
-                    scene->GetPointLight(1)->GetColor(),    //벡터는 전치 필요 X.
-                }
+                .LightPositions = scene->GetPointLight(0)->GetPosition(),
+                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
             };
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
+            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
 
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
@@ -692,24 +722,18 @@ namespace library
                 for (UINT i = 0u; i < voxel->GetNumMaterials(); ++i)
                 {
                     UINT materialIndex = voxel->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
-                    ComPtr<ID3D11ShaderResourceView> ppShaderResourceViews[2] =
+                    if (voxel->GetMaterial(materialIndex)->pDiffuse)
                     {
-                        voxel->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView(),
-                        voxel->GetMaterial(materialIndex)->pNormal->GetTextureResourceView()
-                    };
-                    ComPtr<ID3D11SamplerState> ppSamplers[2] =
+                        m_immediateContext->PSSetShaderResources(0u, 1u, voxel->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(0u, 1u, voxel->GetMaterial(materialIndex)->pDiffuse->GetSamplerState().GetAddressOf());
+                    }
+                    if (voxel->GetMaterial(materialIndex)->pNormal)
                     {
-                        voxel->GetMaterial(materialIndex)->pDiffuse->GetSamplerState(),
-                        voxel->GetMaterial(materialIndex)->pNormal->GetSamplerState()
-                    };
-                    m_immediateContext->PSSetShaderResources(
-                          0u
-                        , 2u
-                        , ppShaderResourceViews->GetAddressOf());  //Question : 이 부분 관해서 FXH 좀 봐야할듯. → FBX랑 관련 없었다. DrawIndexed...
-                    m_immediateContext->PSSetSamplers(
-                          0u
-                        , 2u
-                        , ppSamplers->GetAddressOf());
+                        m_immediateContext->PSSetShaderResources(1u, 1u, voxel->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(1u, 1u, voxel->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
+                    }
+                    m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());
                     m_immediateContext->DrawIndexedInstanced(
                           voxel->GetMesh(i).uNumIndices
                         , voxel->GetNumInstances()
@@ -725,6 +749,177 @@ namespace library
         }
 
         m_swapChain->Present(0, 0);
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   Renderer::RenderSceneToTexture
+
+      Summary:  Render scene to the texture
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    void Renderer::RenderSceneToTexture()
+    {
+        //Unbind current pixel shader resources
+        ComPtr<ID3D11ShaderResourceView> const pSRV[2] = { NULL, NULL };
+        m_immediateContext->PSSetShaderResources(0, 2, pSRV->GetAddressOf());
+        m_immediateContext->PSSetShaderResources(2, 1, pSRV->GetAddressOf());
+
+        m_immediateContext->OMSetRenderTargets(1, m_shadowMapTexture->GetRenderTargetView().GetAddressOf(), m_depthStencilView.Get());
+        m_immediateContext->ClearRenderTargetView(m_shadowMapTexture->GetRenderTargetView().Get(), Colors::White);
+        m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
+
+        UINT stride[3] =
+        {
+            static_cast<UINT>(sizeof(SimpleVertex)),
+            static_cast<UINT>(sizeof(InstanceData)),
+        };
+        UINT offset[2] = { 0u };
+        std::shared_ptr<library::Scene> scene = m_scenes[m_pszMainSceneName];
+
+        for (auto renderable : scene->GetRenderables())
+        {
+            m_immediateContext->IASetVertexBuffers(0u, 1u, renderable.second->GetVertexBuffer().GetAddressOf(), &stride[0], &offset[0]);
+            m_immediateContext->IASetInputLayout(m_shadowVertexShader->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
+
+            CBShadowMatrix cb0 =
+            {
+                .World = renderable.second->GetWorldMatrix(),
+                .View = scene->GetPointLight(0)->GetViewMatrix(),
+                .Projection = scene->GetPointLight(0)->GetProjectionMatrix(),
+                .IsVoxel = false
+            };
+
+            //Transpose
+            cb0.World = XMMatrixTranspose(cb0.World);
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb0.Projection = XMMatrixTranspose(cb0.Projection);
+
+            m_immediateContext->UpdateSubresource(m_cbShadowMatrix.Get(), 0u, nullptr, &cb0, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->VSSetShader(m_shadowVertexShader->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(m_shadowPixelShader->GetPixelShader().Get(), nullptr, 0u);
+
+            if (renderable.second->HasTexture())
+            {
+                for (UINT i = 0u; i < renderable.second->GetNumMeshes(); ++i)
+                {
+                    UINT materialIndex = renderable.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
+                    m_immediateContext->DrawIndexed(
+                        renderable.second->GetMesh(i).uNumIndices
+                        , renderable.second->GetMesh(i).uBaseIndex
+                        , renderable.second->GetMesh(i).uBaseVertex);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
+                }
+            }
+            else
+            {
+                m_immediateContext->DrawIndexed(renderable.second->GetNumIndices(), 0u, 0);
+            }
+        }
+
+        // Model.
+        for (auto model : scene->GetModels())
+        {
+            m_immediateContext->IASetVertexBuffers(0u, 1u, model.second->GetVertexBuffer().GetAddressOf(), &stride[0], &offset[0]);
+            m_immediateContext->IASetInputLayout(m_shadowVertexShader->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(model.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
+
+            CBShadowMatrix cb0 =
+            {
+                .World = model.second->GetWorldMatrix(),
+                .View = scene->GetPointLight(0)->GetViewMatrix(),
+                .Projection = scene->GetPointLight(0)->GetProjectionMatrix(),
+                .IsVoxel = false
+            };
+
+            //Transpose
+            cb0.World = XMMatrixTranspose(cb0.World);
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb0.Projection = XMMatrixTranspose(cb0.Projection);
+
+            m_immediateContext->UpdateSubresource(m_cbShadowMatrix.Get(), 0u, nullptr, &cb0, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->VSSetShader(m_shadowVertexShader->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(m_shadowPixelShader->GetPixelShader().Get(), nullptr, 0u);
+
+            if (model.second->HasTexture())
+            {
+                for (UINT i = 0u; i < model.second->GetNumMeshes(); ++i)
+                {
+                    UINT materialIndex = model.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
+                    m_immediateContext->DrawIndexed(
+                        model.second->GetMesh(i).uNumIndices
+                        , model.second->GetMesh(i).uBaseIndex
+                        , model.second->GetMesh(i).uBaseVertex);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
+                }
+            }
+            else
+            {
+                m_immediateContext->DrawIndexed(model.second->GetNumIndices(), 0u, 0);
+            }
+        }
+
+        // DrawInstanced
+        for (auto voxel : m_scenes[m_pszMainSceneName]->GetVoxels())
+        {
+            ComPtr<ID3D11Buffer> vertexNormalInstanceBuffer[2] =
+            {
+                voxel->GetVertexBuffer(),
+                voxel->GetInstanceBuffer()
+            };
+            m_immediateContext->IASetVertexBuffers(0u, 2u, vertexNormalInstanceBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetInputLayout(m_shadowVertexShader->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(voxel->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);
+
+            CBShadowMatrix cb0 =
+            {
+                .World = voxel->GetWorldMatrix(),
+                .View = scene->GetPointLight(0)->GetViewMatrix(),
+                .Projection = scene->GetPointLight(0)->GetProjectionMatrix(),
+                .IsVoxel = true
+            };
+
+            //Transpose
+            cb0.World = XMMatrixTranspose(cb0.World);
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb0.Projection = XMMatrixTranspose(cb0.Projection);
+
+            m_immediateContext->UpdateSubresource(m_cbShadowMatrix.Get(), 0u, nullptr, &cb0, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_cbShadowMatrix.GetAddressOf());
+
+            m_immediateContext->VSSetShader(m_shadowVertexShader->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(m_shadowPixelShader->GetPixelShader().Get(), nullptr, 0u);
+
+            if (voxel->HasTexture())
+            {
+                for (UINT i = 0u; i < voxel->GetNumMaterials(); ++i)
+                {
+                    UINT materialIndex = voxel->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
+                    m_immediateContext->DrawIndexedInstanced(
+                        voxel->GetMesh(i).uNumIndices
+                        , voxel->GetNumInstances()
+                        , voxel->GetMesh(i).uBaseIndex
+                        , voxel->GetMesh(i).uBaseVertex
+                        , 0u);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
+                }
+            }
+            else
+            {
+                m_immediateContext->DrawIndexedInstanced(voxel->GetNumIndices(), voxel->GetNumInstances(), 0u, 0, 0u);
+            }
+        }
+
+        m_immediateContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M

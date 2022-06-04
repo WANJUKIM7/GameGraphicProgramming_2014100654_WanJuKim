@@ -139,10 +139,12 @@ xcopy /y /d "$(SolutionDir)..\External\Assimp\Binary\x64\Release\assimp-vc142-mt
     <ClCompile Include="Scene\Voxel.cpp" />
     <ClCompile Include="Shader\PixelShader.cpp" />
     <ClCompile Include="Shader\Shader.cpp" />
+    <ClCompile Include="Shader\ShadowVertexShader.cpp" />
     <ClCompile Include="Shader\SkinningVertexShader.cpp" />
     <ClCompile Include="Shader\VertexShader.cpp" />
     <ClCompile Include="Texture\DDSTextureLoader.cpp" />
     <ClCompile Include="Texture\Material.cpp" />
+    <ClCompile Include="Texture\RenderTexture.cpp" />
     <ClCompile Include="Texture\Texture.cpp" />
     <ClCompile Include="Texture\WICTextureLoader.cpp" />
     <ClCompile Include="Window\MainWindow.cpp" />
@@ -162,10 +164,12 @@ xcopy /y /d "$(SolutionDir)..\External\Assimp\Binary\x64\Release\assimp-vc142-mt
     <ClInclude Include="Scene\Voxel.h" />
     <ClInclude Include="Shader\PixelShader.h" />
     <ClInclude Include="Shader\Shader.h" />
+    <ClInclude Include="Shader\ShadowVertexShader.h" />
     <ClInclude Include="Shader\SkinningVertexShader.h" />
     <ClInclude Include="Shader\VertexShader.h" />
     <ClInclude Include="Texture\DDSTextureLoader.h" />
     <ClInclude Include="Texture\Material.h" />
+    <ClInclude Include="Texture\RenderTexture.h" />
     <ClInclude Include="Texture\Texture.h" />
     <ClInclude Include="Texture\WICTextureLoader.h" />
     <ClInclude Include="Window\BaseWindow.h" />

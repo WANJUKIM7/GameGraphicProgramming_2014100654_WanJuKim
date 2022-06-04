@@ -86,7 +86,7 @@ namespace library
                 return hr;
         }
 
-        if (HasTexture() == true && m_aNormalData.empty() == true)
+        if (m_aNormalData.empty() == true)
         {
             calculateNormalMapVectors();
         }
