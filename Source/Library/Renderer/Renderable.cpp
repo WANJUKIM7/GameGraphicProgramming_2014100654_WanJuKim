@@ -175,9 +175,9 @@ namespace library
         {
             NormalData normalData = {};
             calculateTangentBitangent(
-                  aVertices[aIndices[i * 3 + 1]]
+                  aVertices[aIndices[i * 3 + 0]]
+                , aVertices[aIndices[i * 3 + 1]]
                 , aVertices[aIndices[i * 3 + 2]]
-                , aVertices[aIndices[i * 3 + 3]]
                 , tangent
                 , bitangent);
 
