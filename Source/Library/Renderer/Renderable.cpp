@@ -59,7 +59,7 @@ namespace library
     HRESULT Renderable::initialize(_In_ ID3D11Device* pDevice, _In_ ID3D11DeviceContext* pImmediateContext)
     {
         if (pDevice == nullptr || pImmediateContext == nullptr)
-            return E_FAIL;
+            return E_INVALIDARG;
 
         HRESULT hr = S_OK;
 
@@ -175,9 +175,9 @@ namespace library
         {
             NormalData normalData = {};
             calculateTangentBitangent(
-                  aVertices[aIndices[i * 3 + 1]]
+                  aVertices[aIndices[i * 3 + 0]]
+                , aVertices[aIndices[i * 3 + 1]]
                 , aVertices[aIndices[i * 3 + 2]]
-                , aVertices[aIndices[i * 3 + 3]]
                 , tangent
                 , bitangent);
 

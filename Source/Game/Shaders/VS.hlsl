@@ -1,4 +1,5 @@
-#include "PhongShaders.fxh"
+#include "Shaders.fxh"
+//#include "PhongShaders.fxh"
 //#include "VoxelShaders.fxh"
 //#include "SkinningShaders.fxh"
 //Question : PhongShaders를 포함하지 않았는데도 Cube들이 잘 나오는 이유는? → Shader를 include하지 않아도 된다?

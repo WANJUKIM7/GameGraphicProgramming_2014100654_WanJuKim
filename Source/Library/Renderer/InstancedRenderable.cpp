@@ -95,7 +95,7 @@ namespace library
     HRESULT InstancedRenderable::initializeInstance(_In_ ID3D11Device* pDevice)
     {
         if (pDevice == nullptr)
-            return E_FAIL;
+            return E_INVALIDARG;
 
         D3D11_BUFFER_DESC bd =
         {

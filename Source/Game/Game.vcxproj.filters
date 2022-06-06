@@ -54,11 +54,15 @@
   <ItemGroup>
     <FxCompile Include="Shaders\PS.hlsl" />
     <FxCompile Include="Shaders\VS.hlsl" />
+    <FxCompile Include="Shaders\CubeMap_PS.hlsl" />
+    <FxCompile Include="Shaders\CubeMap_VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PhongShaders.fxh" />
     <None Include="Shaders\VoxelShaders.fxh" />
     <None Include="Shaders\SkinningShaders.fxh" />
     <None Include="Shaders\ShadowShaders.fxh" />
+    <None Include="Shaders\CubeMap.fxh" />
+    <None Include="Shaders\Shaders.fxh" />
   </ItemGroup>
 </Project>

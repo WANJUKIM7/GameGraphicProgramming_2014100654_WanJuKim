@@ -14,11 +14,19 @@
 
 namespace library
 {
+    enum class eTextureSamplerType : size_t
+    {
+        TRILINEAR_WRAP = 0,
+        TRILINEAR_CLAMP,
+        COUNT,
+    };
+
     class Texture
     {
     public:
         Texture() = delete;
-        Texture(_In_ const std::filesystem::path& filePath);
+        //Texture(_In_ const std::filesystem::path& filePath);
+        Texture(_In_ const std::filesystem::path& filePath, _In_opt_ eTextureSamplerType textureSamplerType = eTextureSamplerType::TRILINEAR_WRAP);
         Texture(const Texture& other) = delete;
         Texture(Texture&& other) = delete;
         Texture& operator=(const Texture& other) = delete;
@@ -31,8 +39,14 @@ namespace library
         ComPtr<ID3D11ShaderResourceView>& GetTextureResourceView();
         ComPtr<ID3D11SamplerState>& GetSamplerState();
 
+        eTextureSamplerType GetSamplerType() const;
+
+    public:
+        static ComPtr<ID3D11SamplerState> s_samplers[static_cast<size_t>(eTextureSamplerType::COUNT)];
+
     private:
         std::filesystem::path m_filePath;
+        eTextureSamplerType m_textureSamplerType;
         ComPtr<ID3D11ShaderResourceView> m_textureRV;
         ComPtr<ID3D11SamplerState> m_samplerLinear;
     };

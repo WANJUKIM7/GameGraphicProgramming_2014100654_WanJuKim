@@ -39,7 +39,7 @@ namespace library
     HRESULT VertexShader::Initialize(_In_ ID3D11Device* pDevice)
     {
         if (pDevice == nullptr)
-            return E_FAIL;
+            return E_INVALIDARG;
 
         // Create VertexShader
         ComPtr<ID3DBlob> pVSBlob = nullptr;

@@ -272,7 +272,7 @@ namespace library
         };
         m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0, nullptr, &cbChangesOnResize, 0, 0);
 
-        bd.ByteWidth = sizeof(CBLights);
+        bd.ByteWidth = sizeof(CBLights) * NUM_LIGHTS;
         bd.Usage = D3D11_USAGE_DEFAULT;
         bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         bd.CPUAccessFlags = 0u;
@@ -303,19 +303,15 @@ namespace library
         }
 
         // Create Shadow ConstantBuffer.
+        bd.ByteWidth = sizeof(CBShadowMatrix);
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        bd.CPUAccessFlags = 0;
+
+        hr = m_d3dDevice->CreateBuffer(&bd, nullptr, m_cbShadowMatrix.GetAddressOf());
+        if (FAILED(hr))
         {
-            D3D11_BUFFER_DESC bd =
-            {
-                .ByteWidth = sizeof(CBShadowMatrix),
-                .Usage = D3D11_USAGE_DEFAULT,
-                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
-                .CPUAccessFlags = 0
-            };
-            hr = m_d3dDevice->CreateBuffer(&bd, nullptr, m_cbShadowMatrix.GetAddressOf());
-            if (FAILED(hr))
-            {
-                return hr;
-            }
+            return hr;
         }
 
         // initialize m_shadowMapTexture.
@@ -460,29 +456,120 @@ namespace library
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
     void Renderer::Render()
     {
-        RenderSceneToTexture();
+        //RenderSceneToTexture();
         //Draw ~ Present 사이에만 없으면 되나 봄.
         m_immediateContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::MidnightBlue);
         m_immediateContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);    
 
-        UINT stride[3] =
+        UINT strides[3] =
         {
             static_cast<UINT>(sizeof(SimpleVertex)),
             static_cast<UINT>(sizeof(NormalData)),
             static_cast<UINT>(sizeof(AnimationData))
         };
-        UINT offset[3] = { 0u };
+        UINT offsets[3] = { 0u };
         std::shared_ptr<library::Scene> scene = m_scenes[m_pszMainSceneName];
+
+        // Skybox.
+        if (scene->GetSkyBox() != nullptr)
+        {
+            m_immediateContext->IASetVertexBuffers(0u, 1u, scene->GetSkyBox()->GetVertexBuffer().GetAddressOf(), &strides[0], &offsets[0]);
+            m_immediateContext->IASetInputLayout(scene->GetSkyBox()->GetVertexLayout().Get());
+            m_immediateContext->IASetIndexBuffer(scene->GetSkyBox()->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
+
+            CBChangeOnCameraMovement cb0 =
+            {
+                .View = m_camera.GetView(),
+            };
+            XMStoreFloat4(&cb0.CameraPosition, m_camera.GetEye());
+            CBChangeOnResize cb1 =  //QUESTION : projection 관련한 것들은 없어도 되나? initialize에서 했는데.
+            {
+                .Projection = m_projection
+            };
+
+            CBChangesEveryFrame cb2 =
+            {
+                .World =  scene->GetSkyBox()->GetWorldMatrix(),
+                .OutputColor = scene->GetSkyBox()->GetOutputColor(),
+                .HasNormalMap = scene->GetSkyBox()->HasNormalMap()
+            };
+            cb2.World *= XMMatrixTranslationFromVector(m_camera.GetEye());
+
+            for (UINT i = 0u; i < NUM_LIGHTS; ++i)
+            {
+                FLOAT attenuationDistance = scene->GetPointLight(i)->GetAttenuationDistance();
+                FLOAT attenuationDistanceSquared = attenuationDistance * attenuationDistance;
+
+                CBLights cb3 =
+                {
+                    //.LightPositions = scene->GetPointLight(0)->GetPosition(),
+                    //.LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                    //.LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                    //.LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
+                    .Position = scene->GetPointLight(i)->GetPosition(),
+                    .Color = scene->GetPointLight(i)->GetColor(),
+                    .AttenuationDistance = XMFLOAT4(attenuationDistance, attenuationDistance, attenuationDistanceSquared, attenuationDistanceSquared),
+                };
+
+                m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            }
+
+            //Transpose
+            cb0.View = XMMatrixTranspose(cb0.View);
+            cb1.Projection = XMMatrixTranspose(cb1.Projection);
+            cb2.World = XMMatrixTranspose(cb2.World);
+            /*cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);*/
+
+            m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
+            m_immediateContext->UpdateSubresource(scene->GetSkyBox()->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
+            //m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+
+            m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(2u, 1u, scene->GetSkyBox()->GetConstantBuffer().GetAddressOf());
+            m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
+
+            m_immediateContext->PSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
+            m_immediateContext->PSSetConstantBuffers(2u, 1u, scene->GetSkyBox()->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
+            m_immediateContext->PSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
+
+            m_immediateContext->VSSetShader(scene->GetSkyBox()->GetVertexShader().Get(), nullptr, 0u);
+            m_immediateContext->PSSetShader(scene->GetSkyBox()->GetPixelShader().Get(), nullptr, 0u);
+
+            if (scene->GetSkyBox()->HasTexture())
+            {
+                for (UINT i = 0u; i < scene->GetSkyBox()->GetNumMeshes(); ++i)
+                {
+                    UINT materialIndex = scene->GetSkyBox()->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
+                    eTextureSamplerType textureSamplerType = scene->GetSkyBox()->GetMaterial(materialIndex)->pDiffuse->GetSamplerType();
+                    if (scene->GetSkyBox()->GetMaterial(materialIndex)->pDiffuse)
+                    {
+                        m_immediateContext->PSSetShaderResources(2u, 1u, scene->GetSkyBox()->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView().GetAddressOf());
+                        m_immediateContext->PSSetSamplers(0u, 1u, Texture::s_samplers[static_cast<size_t>(textureSamplerType)].GetAddressOf());
+                    }
+                    m_immediateContext->DrawIndexed(
+                        scene->GetSkyBox()->GetMesh(i).uNumIndices
+                        , scene->GetSkyBox()->GetMesh(i).uBaseIndex
+                        , scene->GetSkyBox()->GetMesh(i).uBaseVertex);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
+                }
+            }
+            else
+            {
+                m_immediateContext->DrawIndexed(scene->GetSkyBox()->GetNumIndices(), 0u, 0);
+            }
+        }
 
         for (auto renderable : scene->GetRenderables())
         {
-            ComPtr<ID3D11Buffer> vertexNormalBuffer[2] =
+            ComPtr<ID3D11Buffer> vertexNormalBuffers[2] =
             {
                 renderable.second->GetVertexBuffer(),
                 renderable.second->GetNormalBuffer()
             };
 
-            m_immediateContext->IASetVertexBuffers(0u, 2u, vertexNormalBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetVertexBuffers(0u, 2u, vertexNormalBuffers->GetAddressOf(), strides, offsets);
             m_immediateContext->IASetInputLayout(renderable.second->GetVertexLayout().Get());
             m_immediateContext->IASetIndexBuffer(renderable.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
             
@@ -503,25 +590,36 @@ namespace library
                 .HasNormalMap = renderable.second->HasNormalMap()
             };
             
-            CBLights cb3 =
+            for (UINT i = 0u; i < NUM_LIGHTS; ++i)
             {
-                .LightPositions = scene->GetPointLight(0)->GetPosition(),
-                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
-                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
-                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
-            };
+                FLOAT attenuationDistance = scene->GetPointLight(i)->GetAttenuationDistance();
+                FLOAT attenuationDistanceSquared = attenuationDistance * attenuationDistance;
+
+                CBLights cb3 =
+                {
+                    //.LightPositions = scene->GetPointLight(0)->GetPosition(),
+                    //.LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                    //.LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                    //.LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
+                    .Position = scene->GetPointLight(i)->GetPosition(),
+                    .Color = scene->GetPointLight(i)->GetColor(),
+                    .AttenuationDistance = XMFLOAT4(attenuationDistance, attenuationDistance, attenuationDistanceSquared, attenuationDistanceSquared),
+                };
+
+                m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            }
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
-            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
-            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
+            /*cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);*/
             
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
             m_immediateContext->UpdateSubresource(renderable.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
-            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            //m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
             
             m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
             m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
@@ -535,46 +633,30 @@ namespace library
             m_immediateContext->VSSetShader(renderable.second->GetVertexShader().Get(), nullptr, 0u);
             m_immediateContext->PSSetShader(renderable.second->GetPixelShader().Get(), nullptr, 0u);
 
-            if (renderable.second->HasTexture())
+            if (scene->GetSkyBox() != nullptr)
             {
-                for (UINT i = 0u; i < renderable.second->GetNumMeshes(); ++i)
+                if (scene->GetSkyBox()->GetMaterial(0))
                 {
-                    UINT materialIndex = renderable.second->GetMesh(i).uMaterialIndex;    //TIP : (이틀 절약) 같은 material를 다른 mesh에 사용하는 경우도 있다. 그래서 number마다 해야 한다. 그냥 냅다 0번부터 하는 게 아니라.
-                    if (renderable.second->GetMaterial(materialIndex)->pDiffuse)
-                    {
-                        m_immediateContext->PSSetShaderResources(0u, 1u, renderable.second->GetMaterial(materialIndex)->pDiffuse->GetTextureResourceView().GetAddressOf());
-                        m_immediateContext->PSSetSamplers(0u, 1u, renderable.second->GetMaterial(materialIndex)->pDiffuse->GetSamplerState().GetAddressOf());
-                    }
-                    if (renderable.second->GetMaterial(materialIndex)->pNormal)
-                    {
-                        m_immediateContext->PSSetShaderResources(1u, 1u, renderable.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
-                        m_immediateContext->PSSetSamplers(1u, 1u, renderable.second->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
-                    }
-                    m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
-                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());
-                    m_immediateContext->DrawIndexed(
-                          renderable.second->GetMesh(i).uNumIndices
-                        , renderable.second->GetMesh(i).uBaseIndex
-                        , renderable.second->GetMesh(i).uBaseVertex);  //TIP : 저번에 buffer 어쩌구 warning은 왜 생긴 거지? 그거 때문에 안 했는데..
+                    eTextureSamplerType textureSamplerType = scene->GetSkyBox()->GetMaterial(0)->pDiffuse->GetSamplerType();
+                    m_immediateContext->PSSetShaderResources(2u, 1u, scene->GetSkyBox()->GetMaterial(0)->pDiffuse->GetTextureResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(0u, 1u, Texture::s_samplers[static_cast<size_t>(textureSamplerType)].GetAddressOf());
                 }
             }
-            else
-            {
-                m_immediateContext->DrawIndexed(renderable.second->GetNumIndices(), 0u, 0);
-            }
+
+            m_immediateContext->DrawIndexed(renderable.second->GetNumIndices(), 0u, 0u);
         }
         
         // Model.
         for (auto model : scene->GetModels())
         {
-            ComPtr<ID3D11Buffer> vertexNormalAnimationBuffer[3] =
+            ComPtr<ID3D11Buffer> vertexNormalAnimationBuffers[3] =
             {
                 model.second->GetVertexBuffer(),
                 model.second->GetNormalBuffer(),
                 model.second->GetAnimationBuffer()
             };
 
-            m_immediateContext->IASetVertexBuffers(0u, 3u, vertexNormalAnimationBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetVertexBuffers(0u, 3u, vertexNormalAnimationBuffers->GetAddressOf(), strides, offsets);
             m_immediateContext->IASetInputLayout(model.second->GetVertexLayout().Get());
             m_immediateContext->IASetIndexBuffer(model.second->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);    //WORD라서 R_16이 들어가네.
 
@@ -595,30 +677,39 @@ namespace library
                 .HasNormalMap = model.second->HasNormalMap()
             };
 
-            CBLights cb3 =
+            CBLights cb3[2];
+            for (UINT i = 0u; i < NUM_LIGHTS; ++i)
             {
-                .LightPositions = scene->GetPointLight(0)->GetPosition(),
-                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
-                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
-                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
-            };
+                FLOAT attenuationDistance = scene->GetPointLight(i)->GetAttenuationDistance();
+                FLOAT attenuationDistanceSquared = attenuationDistance * attenuationDistance;
+
+                cb3[i].Position = scene->GetPointLight(i)->GetPosition();
+                cb3[i].Color = scene->GetPointLight(i)->GetColor();
+                cb3[i].AttenuationDistance = XMFLOAT4(attenuationDistance, attenuationDistance, attenuationDistanceSquared, attenuationDistanceSquared);
+            }
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
-            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
-            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
+            /*cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);*/
 
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
             m_immediateContext->UpdateSubresource(model.second->GetConstantBuffer().Get(), 0u, nullptr, &cb2, 0u, 0u);
-            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, &cb3, 0u, 0u);
+            m_immediateContext->UpdateSubresource(m_cbLights.Get(), 0u, nullptr, cb3, 0u, 0u);
+
+            ComPtr<ID3D11Buffer> lightBuffers[2] =
+            {
+                m_cbLights,
+                m_cbLights,
+            };
 
             m_immediateContext->VSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
             m_immediateContext->VSSetConstantBuffers(1u, 1u, m_cbChangeOnResize.GetAddressOf());
             m_immediateContext->VSSetConstantBuffers(2u, 1u, model.second->GetConstantBuffer().GetAddressOf());
-            m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
+            //m_immediateContext->VSSetConstantBuffers(3u, 1u, m_cbLights.GetAddressOf());
 
             m_immediateContext->PSSetConstantBuffers(0u, 1u, m_camera.GetConstantBuffer().GetAddressOf());
             m_immediateContext->PSSetConstantBuffers(2u, 1u, model.second->GetConstantBuffer().GetAddressOf());    //TIP : 상상도 못했다; PS에서 쓰는 거라 PS에 세팅해줘야 된다.
@@ -642,6 +733,9 @@ namespace library
                         m_immediateContext->PSSetShaderResources(1u, 1u, model.second->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
                         m_immediateContext->PSSetSamplers(1u, 1u, model.second->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
                     }
+                    // Set Shadow ShaderResources & Samplers
+                    /*m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());*/
                     m_immediateContext->DrawIndexed(
                           model.second->GetMesh(i).uNumIndices
                         , model.second->GetMesh(i).uBaseIndex
@@ -655,7 +749,7 @@ namespace library
         }
 
         // DrawInstanced
-        stride[2] = static_cast<UINT>(sizeof(InstanceData));
+        strides[2] = static_cast<UINT>(sizeof(InstanceData));
         for (auto voxel : m_scenes[m_pszMainSceneName]->GetVoxels())
         {
             ComPtr<ID3D11Buffer> vertexNormalInstanceBuffer[3] =
@@ -664,7 +758,7 @@ namespace library
                 voxel->GetNormalBuffer(),
                 voxel->GetInstanceBuffer()
             };
-            m_immediateContext->IASetVertexBuffers(0u, 3u, vertexNormalInstanceBuffer->GetAddressOf(), stride, offset);
+            m_immediateContext->IASetVertexBuffers(0u, 3u, vertexNormalInstanceBuffer->GetAddressOf(), strides, offsets);
             m_immediateContext->IASetInputLayout(voxel->GetVertexLayout().Get());
             m_immediateContext->IASetIndexBuffer(voxel->GetIndexBuffer().Get(), DXGI_FORMAT_R16_UINT, 0u);
 
@@ -687,18 +781,18 @@ namespace library
 
             CBLights cb3 =
             {
-                .LightPositions = scene->GetPointLight(0)->GetPosition(),
-                .LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
-                .LightViews = scene->GetPointLight(0)->GetViewMatrix(),
-                .LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
+                //.LightPositions = scene->GetPointLight(0)->GetPosition(),
+                //.LightColors = scene->GetPointLight(0)->GetColor(),    //벡터는 전치 필요 X.
+                //.LightViews = scene->GetPointLight(0)->GetViewMatrix(),
+                //.LightProjections = scene->GetPointLight(0)->GetProjectionMatrix()
             };
 
             //Transpose
             cb0.View = XMMatrixTranspose(cb0.View);
             cb1.Projection = XMMatrixTranspose(cb1.Projection);
             cb2.World = XMMatrixTranspose(cb2.World);
-            cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
-            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);
+            /*cb3.LightViews[0] = XMMatrixTranspose(cb3.LightViews[0]);
+            cb3.LightProjections[0] = XMMatrixTranspose(cb3.LightProjections[0]);*/
 
             m_immediateContext->UpdateSubresource(m_camera.GetConstantBuffer().Get(), 0u, nullptr, &cb0, 0u, 0u);
             m_immediateContext->UpdateSubresource(m_cbChangeOnResize.Get(), 0u, nullptr, &cb1, 0u, 0u);
@@ -732,8 +826,9 @@ namespace library
                         m_immediateContext->PSSetShaderResources(1u, 1u, voxel->GetMaterial(materialIndex)->pNormal->GetTextureResourceView().GetAddressOf());
                         m_immediateContext->PSSetSamplers(1u, 1u, voxel->GetMaterial(materialIndex)->pNormal->GetSamplerState().GetAddressOf());
                     }
-                    m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
-                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());
+                    // Set Shadow ShaderResources & Samplers
+                    /*m_immediateContext->PSSetShaderResources(2u, 1u, m_shadowMapTexture->GetShaderResourceView().GetAddressOf());
+                    m_immediateContext->PSSetSamplers(2u, 1u, m_shadowMapTexture->GetSamplerState().GetAddressOf());*/
                     m_immediateContext->DrawIndexedInstanced(
                           voxel->GetMesh(i).uNumIndices
                         , voxel->GetNumInstances()

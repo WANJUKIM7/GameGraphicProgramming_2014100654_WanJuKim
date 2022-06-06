@@ -12,9 +12,10 @@ namespace library
       Modifies: [m_position, m_color, m_eye, m_at,
                  m_up, m_view, m_projection].
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
-    PointLight::PointLight(_In_ const XMFLOAT4& position, _In_ const XMFLOAT4& color)
+    PointLight::PointLight(_In_ const XMFLOAT4& position, _In_ const XMFLOAT4& color, _In_ FLOAT attenuationDistance)
         : m_position(position)
         , m_color(color)
+        , m_attenuationDistance(attenuationDistance)
         , m_eye(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f))
         , m_at(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f))
         , m_up(DEFAULT_UP)
@@ -31,6 +32,7 @@ namespace library
       Returns:  const XMFLOAT4&
                   Position of the light
     M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    
     const XMFLOAT4& PointLight::GetPosition() const
     {
         return m_position;
@@ -71,6 +73,19 @@ namespace library
     const XMMATRIX& PointLight::GetProjectionMatrix() const
     {
         return m_projection;
+    }
+
+    /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
+      Method:   PointLight::GetAttenuationDistance
+
+      Summary:  Returns the attenuation distance
+
+      Returns:  FLOAT
+                  Attenuation distance
+    M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M---M-M*/
+    FLOAT PointLight::GetAttenuationDistance() const
+    {
+        return m_attenuationDistance;
     }
 
     /*M+M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M+++M
