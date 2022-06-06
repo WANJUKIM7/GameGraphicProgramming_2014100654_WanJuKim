@@ -283,8 +283,8 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         return 0;
     }
 
-    // Skybox 
-    /*std::shared_ptr<library::Skybox> skybox = std::make_shared<library::Skybox>(L"Content/Common/Maskonaive2_1024.dds", 1000.0f);
+    // Skybox.
+    std::shared_ptr<library::Skybox> skybox = std::make_shared<library::Skybox>(L"Content/Common/Maskonaive2_1024.dds", 1000.0f);
     skybox->SetVertexShader(cubeMapVertexShader);
     skybox->SetPixelShader(cubeMapPixelShader);
     if (FAILED(mainScene->AddSkyBox(skybox)))
@@ -292,8 +292,8 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         return 0;
     }
     
-    // Reflection Cube
     XMFLOAT4 color;
+    // Reflection Cube.
     XMStoreFloat4(&color, Colors::Aqua);
     std::shared_ptr<Cube> reflectCube = std::make_shared<Cube>(color);
     reflectCube->Translate(XMVectorSet(0.0f, 0.0f, 10.0f, 0.0f));
@@ -308,26 +308,26 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     if (FAILED(mainScene->SetPixelShaderOfRenderable(L"ReflectCube", L"EnvironmentMapShader")))
     {
         return 0;
-    }*/
-
-    std::shared_ptr<library::Model> sponza = std::make_shared<library::Model>(L"Content/nanosuit/nanosuit.obj");
-    sponza->Scale(0.1f, 0.1f, 0.1f);
-    if (FAILED(mainScene->AddModel(L"Sponza", sponza)))
-    {
-        return 0;
-    }
-    if (FAILED(mainScene->SetVertexShaderOfModel(L"Sponza", L"PhongShader")))
-    //if (FAILED(mainScene->SetVertexShaderOfModel(L"Sponza", L"EnvironmentMapShader")))
-    {
-        return 0;
-    }
-    if (FAILED(mainScene->SetPixelShaderOfModel(L"Sponza", L"PhongShader")))
-    //if (FAILED(mainScene->SetPixelShaderOfModel(L"Sponza", L"EnvironmentMapShader")))
-    {
-        return 0;
     }
 
-    XMFLOAT4 color;
+    // Attenuation.
+    //std::shared_ptr<library::Model> sponza = std::make_shared<library::Model>(L"Content/nanosuit/nanosuit.obj");
+    //sponza->Scale(0.1f, 0.1f, 0.1f);
+    //if (FAILED(mainScene->AddModel(L"Sponza", sponza)))
+    //{
+    //    return 0;
+    //}
+    //if (FAILED(mainScene->SetVertexShaderOfModel(L"Sponza", L"PhongShader")))
+    ////if (FAILED(mainScene->SetVertexShaderOfModel(L"Sponza", L"EnvironmentMapShader")))
+    //{
+    //    return 0;
+    //}
+    //if (FAILED(mainScene->SetPixelShaderOfModel(L"Sponza", L"PhongShader")))
+    ////if (FAILED(mainScene->SetPixelShaderOfModel(L"Sponza", L"EnvironmentMapShader")))
+    //{
+    //    return 0;
+    //}
+
     XMStoreFloat4(&color, Colors::Orange);
 
     std::shared_ptr<library::PointLight> directionalLight = std::make_shared<library::PointLight>(
